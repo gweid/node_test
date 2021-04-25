@@ -235,3 +235,72 @@ console.log('hello, Node.js')
 
 
 
+### 3.3、Node 传递参数与接收参数
+
+传递参数：只需要在执行 node 命令的时候，在后面跟上参数即可
+
+```js
+node server/index.js env=production gweid
+```
+
+
+
+获取参数：通过 node 的全局变量 process 获取：
+
+> server/index.js
+
+```js
+console.log(process.argv)
+```
+
+可以看到：
+
+![](/imgs/img9.png)
+
+可以看到 process.argv 是一个数组，里面包含了刚刚传递进去的参数
+
+
+
+### 3.4、Node 全局对象
+
+Node 文档位置：https://nodejs.org/dist/latest-v14.x/docs/api/globals.html
+
+
+
+#### 3.4.1、特殊的全局对象
+
+特殊的全局对象：能够在模块中任意使用，但是在命令行交互中是不可以使用的
+
+比如： `__dirname`， `__filename`， `exports`， `module`， `require()`
+
+其中：  `exports`， `module`， `require()` 是与模块化相关，后面再详细描述
+
+
+
+`__dirname`：获取当前文件所在的路径（不包括文件名）
+
+`__filename`：获取当前文件所在的路径（包括文件名）
+
+![](/imgs/img10.png)
+
+
+
+#### 3.4.2、常用的全局对象
+
+还有一些常用的全局对象：
+
+- console：用于调试控制台
+- process：process 提供了 Node 进程中相关的信息，比如 Node 的运行环境还有一些参数等
+- buffer：用于处理二进制数据（后面再详细描述）
+- 定时器相关：（定时器相关的更多的与事件循环相关）
+  - setTimeout(callback, delay[, ...args\])，间隔多少毫秒后执行，只执行一次；可以使用 clearTimeout(timeoutObject) 清除
+  - setInterval(callback, delay[, ...args\])，没多少毫秒执行一次，重复执行；可以使用 clearInterval(intervalObject) 清除
+  - setImmediate(callback[, ...args\])，同步执行完后，立即执行，不需要跟时间。（在事件循环时再详细描述）；可以使用 clearImmediate(immediateObject) 清除
+  - process.nextTick(callback[, ...args])：添加到下一次 tick 队列中执行
+- global：例如 process、console、setTimeout 等都被放到了 global 中，与浏览器的 window 对象类似
+  - 浏览器的 window：挂有 document、setTimeout、alert、console 等等全局对象
+  - Node 的 global：也挂有 process、console、setTimeout 等
+  - 两者的一些区别：在浏览器中顶层中，通过 var 声明的变量会被挂载到 window 上；但是在 Node 中, var  声明的变量不会挂载到 global 上，仅仅在当前模块中。这主要是在浏览器中，是没有模块的概念的，而 Node 中会有模块的概念，那么就需要限制当前模块的变量仅仅在当前模块生效。其他的模块需要用到这个变量，那么可以通过导出导入的方式
+
+
+
