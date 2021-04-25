@@ -45,12 +45,10 @@ Node 版本管理工具可以帮助开发者切换不同的 Node 版本
 
 **常用的 Node 版本管理工具:**
 
-- window 平台： 使用 `nvm-window`，地址：https://github.com/coreybutler/nvm-windows
+- window 平台： 使用 `nvm-window`，下载地址：https://github.com/coreybutler/nvm-windows/releases
 - Mac、Linux 平台:
   - nvm：地址：https://github.com/nvm-sh/nvm
   - n：地址：https://github.com/tj/n
-
-
 
 
 
@@ -169,6 +167,71 @@ function add(one, two) {
 - 其中字节码与优化过的机器码可能是逆向的，也就是机器码被还原成字节码；这是因为，比如 add 函数调用了两次，第一次的参数都是 number 类型，但是第二次的参数却变成了 string 类型，那么就会造成与优化机器码假定的函数类型冲突，会被还原成字节码
 
 所以，平时写代码的时候，最好是要固定一些函数的只能，比如说 add 函数，它的职能只是单一的计算两个数之和，而不要进行其他 string 类型的运算，这样能更好的提高 v8 引擎的解析性能
+
+
+
+## 3.Node.js 基础
+
+前面说过，V8 是可以独立运行的；事实上，像谷歌浏览器、Node.js 都是嵌入了 V8 引擎来做 js 的解析。
+
+Node.js 基于 V8 引擎，也就是说使用 V8 引擎来执行 js 代码，但是 Node.js 又不等于 V8，它还有一些其它的东西。
+
+就像浏览器一样，不仅仅只是处理 js，还需要各种各样的进程、事件循环、操作浏览器的 api 等等。Node.js 也一样，除了解析 js 需要使用 V8 引擎以外，还需要一些额外的操作，比如文件系统读/写、网络IO、加密、压缩解压文件等操作。
+
+
+
+### 3.1、Node.js 基础架构
+
+#### 3.1.1、Node.js 的基本分层
+
+![](/imgs/img5.png)
+
+**上层：**
+
+这一层是 Node 标准库，比如 Http, Buffer, fs 等模块，在开发的时候可以通过 js 直接调用相关 API 这些模块来实现相关功能
+
+**中间层：**
+
+Node bindings（由 c++ 实现）：是沟通 JS 和 C++ 的桥梁，封装 V8 引擎 和 Libuv 的细节，向上层提供基础 API 服务。比如：C/C++ 实现了一个 http_parser 的库，非常高效，但是前端开发人员只会写 JavaScript，直接调用这个库肯定是不能成功的，所以就需要一个中间的桥梁。Node bindings 就是这个中间桥梁
+
+C/C++ Addons：就是支持开发人员自定义封装 C/C++ 来扩展想要实现的功能
+
+**下层：**
+
+这一层，是 Node.js 运行时的关键，基本由 C/C++ 实现
+
+- V8：谷歌开发的 JavaScript 引擎，用于将 js 代码解析为能被 CPU 执行的机器码
+- Libuv：一个高性能的事件驱动 I/O 库，并且提供了跨平台（如 Windows、Linux）的API。提供了事件循环、文件系统读写、网络IO、线程池等等内容
+- c-ares：由 C 语言实现的异步 DNS 库
+- http_parser、open_SSL、zlib等：提供一些其他能力
+
+
+
+#### 3.1.2、Node.js 工作流程
+
+![](/imgs/img7.png)
+
+
+
+#### 3.1.3、Node.js 与谷歌浏览器的一些区别
+
+先看看下面这张图：
+
+![](/imgs/img6.png)
+
+可以看到，在谷歌浏览器中，HTML/CSS 交给 Blink 内核处理，js 交给 V8 引擎处理。而在 Node 中，不处理 UI 层，但是却与浏览器以相同的机制和原理运行，并且在中间层这里基于 libuv 有着自己更加强大的功能
+
+
+
+### 3.2、简单把 Node.js 跑起来
+
+比如有一个 server/index.js 文件：
+
+```js
+console.log('hello, Node.js')
+```
+
+只需要在终端执行 `node server/index.js` 即可看到输出结果
 
 
 
