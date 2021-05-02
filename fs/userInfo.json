@@ -1,0 +1,14 @@
+{
+  "jack": {
+    "age": 18,
+    "gender": "male"
+  },
+  "mark": {
+    "age": 19,
+    "gender": "male"
+  },
+  "marry": {
+    "age": 19,
+    "gender": "female"
+  }
+}

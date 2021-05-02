@@ -711,3 +711,349 @@ console.log(moduleInfo)
 
 然后执行 `node index.mjs`，可以看到正常输出，没有报错
 
+
+
+## 5、Node 常用的内置模块
+
+Node 中有非常多内置模块，这些内置模块构成了 Node 强大的能力。
+
+
+
+### 5.1、path 模块
+
+path 模块主要用于对路径的处理。
+
+在 Mac OS、Linux 和 window上 的路径分割符不一样的
+
+- window上会使用 `\`或者 `\\` 来作为文件路径的分隔符，虽然目前也支持 `/`
+- Mac OS 和 Linux 上使用 `/` 作为文件路径分割符
+
+那么这就带来了一个问题：在 window 上使用 `\` 作为分隔符开发了一个应用程序，需要不是到 Linux 上该怎么办？
+
+path 模块就是解决这种问题的，用于抹平不同操作系统分隔符之间的差异
+
+
+
+#### 5.1.1、path 常用 API
+
+**从路径中获取信息：**
+
+- dirname：获取文件的父文件夹
+- basename：获取文件名
+- extname：获取文件扩展名
+
+```js
+const testPath = 'modules/user/common/utils.js'
+
+console.log(path.dirname(testPath)) // modules/user/common
+console.log(path.basename(testPath)) // utils.js
+console.log(path.extname(testPath)) // .js
+```
+
+
+
+**路径拼接： path.join**
+
+如果想将多个路径进行拼接，但是不同的操作系统可能使用的是不同的分隔符，那么可以使用 path.join
+
+```js
+const onePath = 'module/usre'
+const twoPath = 'a.js'
+const threePath = '../b.js'
+
+console.log(path.join(onePath, twoPath)) // module/usre/a.js
+console.log(path.join(onePath, threePath)) // module/b.js
+```
+
+
+
+**将某个文件与某个文件夹拼接： path.resolve**
+
+resolve 函数会判断拼接的路径前面是否有 `/` 或 `./` 或 `../`
+
+这是什么意思呢？看看下面例子的输出：
+
+```js
+const onePath = './module/usre'
+const twoPath = '/common/utils'
+const threePath = 'b.js'
+
+console.log(path.resolve(onePath, threePath)) // G:\node_test\module\usre\b.js
+console.log(path.resolve(twoPath, threePath)) // G:\common\utils\b.js
+```
+
+可以发现，resolve 会把当前文件所在的全路径拼接，而 join 只是单纯的将两个路径加在一起
+
+
+
+### 5.2、fs 模块
+
+fs 模块在 Node 中是用于操作文件系统的，可以在任何的操作系统（window、Mac OS、Linux）上面直接去操作文件；这也是 Node可以开发服务器的一大原因，也是它可以成为前端自动化脚本等热门工具的原因。
+
+
+
+fs 提供了特别多的 api，这些 api 一般都提供了 3 中使用方式：
+
+- 方式一：同步操作文件，代码会被阻塞
+
+  ```js
+  const fs = require('fs')
+  const { resolve } = require('path')
+  
+  const userInfo = fs.readFileSync(resolve(__dirname, './userInfo.json'), 'utf-8')
+  console.log(userInfo)
+  ```
+
+- 方式二：异步回调函数操作文件，代码不会被阻塞，需要传入回调函数，当获取到结果时，回调函数被执行
+
+  ```js
+  const filrPath = resolve(__dirname, './userInfo.json')
+  fs.readFile(filrPath, 'utf-8', (err, state) => {
+    if (err) {
+      console.log(err)
+    } else {
+      console.log(state)
+    }
+  })
+  ```
+
+- 方式三：异步 Promise 操作文件，代码不会被阻塞，通过 fs.promises 调用方法操作，会返回一个 Promise，可以通过 then、catch 进行处理（需要看看 api 是否支持 promise）
+
+  ```js
+  const filrPath = resolve(__dirname, './userInfo.json')
+  fs.promises.readFile(filrPath, 'utf-8')
+    .then(state => {
+      console.log(state)
+    })
+    .catch(err => {
+      console.log(err)
+    })
+  ```
+
+
+
+#### 5.2.1、读写文件
+
+读取文件：fs.readFile(path[, options], callback)
+
+写入文件：fs.writeFile(file, data[, options], callback)
+
+
+
+看看写入文件的例子：
+
+```js
+const str = 'hello, Node.js'
+const targetPath = resolve(__dirname, './test.txt')
+
+fs.writeFile(targetPath, str, err => {
+  if (err) {
+    console.log(err)
+  }
+})
+```
+
+writeFile 的几个参数：
+
+- file：写入文件的路径
+- data：写入文件的内容
+- [, options]：可选参数，可以是字符串，也可以是对象
+  - flag：写入的方式
+    - w：打开文件写入，写入时的默认值就是这个
+    - w+：打开文件进行读写，如果文件不存在创建文件
+    - r：打开文件进行读取，读取时的默认值就是这个
+    - r+：打开文件进行读写，如果文件不存在抛出异常
+    - a：打开要写入的文件，将内容追加到文件末尾，如果文件不存在创建文件
+    - a+：打开文件进行读写，将内容追加到文件末尾，如果文件不存在创建文件
+  - encoding：字符的编码，一般来讲使用 utf-8
+- callback：写入成功后回调
+
+
+
+#### 5.2.2、文件夹操作
+
+**创建文件夹：**
+
+```
+const fs = require('fs')
+const { resolve } = require('path')
+
+const dir = resolve(__dirname, './modules')
+
+// 通过 fs.existsSync 判断文件开存不存在，不存在，创建
+if (!fs.existsSync(dir)) {
+  fs.mkdir(dir, err => {
+    if (err) {
+      console.log(err)
+    }
+  })
+}
+
+
+
+**递归读取文件夹下的所有文件：**
+
+- 第一种方法，通过 fs.stat 判断是否文件夹
+
+  ```js
+  function getFiles(dirname) {
+    fs.readdir(dirname, (err, res) => {
+      if (err) return
+  
+      res.forEach(file => {
+        // 通过 fs.statSync 读取文件信息
+        const info = fs.statSync(resolve(dirname, file))
+        // 判断是否文件夹
+        if (info.isDirectory()) {
+          getFiles(resolve(dirname, file))
+        } else {
+          console.log(file)
+        }
+      })
+    })
+  }
+  
+  const dir = resolve(__dirname, './common')
+  getFiles(dir)
+  ```
+
+- 第二种方法：通过 fs.readdir 的 withFileTypes: true 在读取的时候把文件类型一起获取
+
+  ```js
+  function getFiles(dirname) {
+    // withFileTypes: true 表示把文件类型一起获取到
+    fs.readdir(dirname, { withFileTypes: true }, (err, res) => {
+      if (err) return
+  
+      res.forEach(file => {
+        if (file.isDirectory()) {
+          getFiles(resolve(dirname, file.name))
+        } else {
+          console.log(file.name)
+        }
+      })
+    })
+  }
+  
+  const dir = resolve(__dirname, './common')
+  getFiles(dir)
+  ```
+
+
+
+**文件重命名：**
+
+```js
+const fs = require('fs')
+const { resolve } = require('path')
+
+const oldName = resolve(__dirname, './modules')
+const newName = resolve(__dirname, './src')
+
+fs.rename(oldName, newName, err => {
+  if (err) {
+    console.log(err)
+  }
+})
+```
+
+
+
+...... 除了上面的，还有很多常用的 fs api，具体在需要使用到的时候，只需要查询文档即可：https://nodejs.org/dist/latest-v14.x/docs/api/fs.html
+
+
+
+### 5.3、event 模块
+
+Node 中的事件总线
+
+
+
+#### 5.3.1、事件播报、监听、关闭
+
+- 通过 \.on 或者 \.addListener 监听事件
+- 通过 \.emit 播报事件
+- 通过 \.off 关闭事件
+
+```js
+const EventEmitter = require('events')
+
+const eventBus = new EventEmitter()
+
+const clickEvent = (args) => {
+  console.log(args)
+}
+// 事件监听
+eventBus.on('click', clickEvent)
+
+// 事件播报
+setTimeout(() => {
+  eventBus.emit('click', { msg: 'hello' })
+
+  // 取消事件监听
+  eventBus.off('click', clickEvent)
+}, 1000)
+
+// 上面已经取消，这里播报的不会再被监听到
+setTimeout(() => {
+  eventBus.emit('click', { msg: 'hihihi' })
+}, 2000)
+```
+
+
+
+#### 5.3.2、event 的一些其他方法
+
+- \.once：只监听一次
+
+  ```
+  const EventEmitter = require('events')
+  const eventBus = new EventEmitter()
+  
+  const clickEvent = (args) => {
+    console.log(args)
+  }
+  // 只监听一次
+  eventBus.once('click', clickEvent)
+  
+  setTimeout(() => {
+    eventBus.emit('click', { msg: 'hello' })
+  }, 1000)
+  setTimeout(() => {
+    eventBus.emit('click', { msg: 'hihihi' })
+  }, 2000)
+  ```
+
+- \.removeAllListeners([eventName])：移除所有监听事件，参数是一个字符串或者数组，不传代表移除所有事件监听，传入例如： ‘click’ 或者 ['click']，代表移除所有 click 事件监听
+
+  ```js
+  const EventEmitter = require('events')
+  const eventBus = new EventEmitter()
+  
+  eventBus.on('click', (args) => {
+    console.log(args)
+  })
+  eventBus.on('tap', (args) => {
+    console.log(args)
+  })
+  
+  setTimeout(() => {
+    eventBus.emit('click', { msg: 'hello' })
+    eventBus.emit('tap', { info: 'message' })
+  
+    // 移除所有监听
+    // eventBus.removeAllListeners()
+    // 移除所有 click 事件监听
+    eventBus.removeAllListeners(['click'])
+  }, 1000)
+  
+  setTimeout(() => {
+    eventBus.emit('click', { msg: 'hello' })
+    eventBus.emit('tap', { info: 'message' })
+  }, 2000)
+  ```
+
+
+
+其他的一些方法也是当需要使用到的时候，参考文档即可：https://nodejs.org/dist/latest-v14.x/docs/api/events.html
+
