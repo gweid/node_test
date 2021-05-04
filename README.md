@@ -1057,3 +1057,599 @@ setTimeout(() => {
 
 其他的一些方法也是当需要使用到的时候，参考文档即可：https://nodejs.org/dist/latest-v14.x/docs/api/events.html
 
+
+
+## 6、npm 包管理
+
+当我们或者别人开发了一个很好用的轮子，想要将代码分享出去，可以使用 npm 工具将代码发布到特定的位置，其他想要使用的人就可以直接通过工具来安装、升级、删除共享的代码。
+
+npm 地址： https://www.npmjs.com/
+
+上传到 npm 上的包实际上是存储到 registry 仓库上面，需要安装时，也是从 registry 仓库上面下载。
+
+
+
+可参考文章：
+
+[前端工程化 - 剖析npm的包管理机制](https://juejin.cn/post/6844904022080667661)
+
+
+
+### 6.1、配置文件 package.json
+
+如果想要使用 npm 安装别人的包，就需要初始化一个 npm 的环境，执行命令： `npm init`，然后根据提示完善项目自定义信息，初始化完成后会在目录中多一个 package.json 的文件。
+
+当然，如果不想繁琐的去一步一步完善信息，也可以直接执行 `npm init -y`，会跳过完善自定义信息的步骤，以默认配置生成 package.json。
+
+
+
+#### 6.1.1、package.json 常见属性
+
+```js
+{
+  "name": "npmpackage",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "main": "index.js", 
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dayjs": "^1.10.4"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.14.0"
+  }
+}
+```
+
+- name：项目名称
+- version：项目当前版本
+- description：项目描述信息
+- author：项目作者相关信息【发布时需要用到】
+- license：开源协议【发布时需要用到】
+- private：记录当前项目是否私有，值为 true，表示 npm 不能发布它，防止私有项目或模块被发布出去
+- keywords：关键词【发布后在 npm 官网上可以通过这里的关键字搜索到】
+- main：设置项目的主入口，这代表当 `require(xxx)` 的时候是找 xxx 的哪个文件，比如这里的`main: index.js` 代表会找到项目根目录的 index.js 文件
+- scripts：用于配置一些脚本命令，以键值对的形式存在；配置后可以通过 `npm run key` 来执行这个命令
+- dependencies：指定无论开发环境还是生产环境都需要依赖的包。执行 `npm i dayjs -S` 安装的包就会分配到这里面
+- devDependencies：这里的包只在开发环境使用，在生产环境不需要。执行 `npm i @babel/core -D` 安装的包就会分配到这里面
+
+
+
+#### 6.1.2、包的版本号
+
+在安装的 npm 包后面，一般都会带着版本号，例如：
+
+```js
+"dependencies": {
+  "dayjs": "^1.10.4"
+},
+"devDependencies": {
+  "@babel/core": "^7.14.0"
+}
+```
+
+npm 的版本号通常需要遵循 semver 版本规范，具体可以查看：https://semver.org/lang/zh-CN/
+
+
+
+**semver 标准版本规范**
+
+一般是 `X.Y.Z` 的方式，即 `主版本号.次版本号.修订号`
+
+- X：主版本号，当你做了不兼容的 API 修改（可能不兼容之前的版本）
+- Y：次版本号，当你做了向下兼容的功能性新增（新加了功能，兼容之前版本）
+- Z：修订号，当你做了向下兼容的问题修正（没有新功能，修复之前版本的 bug）
+
+但是也不一定百分百遵循这个规范，不如有些 2.5.1 --> 2.6.1 可能会抛弃掉某些功能，导致了不兼容。但是大体上是会遵循这个规范的。
+
+
+
+版本前面的 `^` 以及 `~` 的意义，例如：
+
+- `^x.y.z`：表示 x 保持不变，y 和 z 永远安装最新版本；也就是说当 npm i 去重新下载包的时候，如果当前 package.json 中的 y 或 z 落后于远端包仓库的 y、z，那么会下载最新的，并且更新本地包代码和版本号；x 版本号落后于远端包仓库的 x，不会去下载最新的，如果需要更新包，需要 `npm install xxx@x.y.z ` 这样指定新版本号去下载。这样子避免了新版本的包与当前代码不兼容的问题。
+- `~x.y.z`：表示 x、y 保持不变，z 永远安装最新版本
+
+
+
+**semver 先行版本**
+
+当某个版本改动比较大、并非稳定而且可能无法满足预期的兼容性需求时，可能需要先发布一个先行版本。
+
+先行版本号可以加到 `主版本号.次版本号.修订号` 的后面，两者间一般以 `-` 作连接符
+
+- alpha：内部版本
+- beta：公测版本
+- rc，即 Release candiate：正式版本的候选版本
+
+例子：
+
+```js
+1.1.1-alpha
+2.2.1-beta
+3.3.3-rc
+```
+
+
+
+### 6.2、package-lock.json 文件
+
+在 npm 更新到 v5.x.x 以后，安装第三方包会会自动生成一个  package-lock.json；比如，当使用 npm i axios -S 的时候，会生成一个 package-lock.json 文件。
+
+
+
+#### 6.2.1、package-lock.json 的作用
+
+主要就是锁定当前使用的库的版本。因为在 package.json 中， `^x.y.z` 只能锁定 x，`~x.y.z` 只能锁定 x、y，版本 z 肯定锁不定的，你不能保证所有的包版本都完全按照 semver 版本规范来，如果 z 版本也涉及到兼容，那么对项目来说，将会是毁灭性的。而 package-lock.json 就是帮助我们锁定当前版本的（具体到 z 小版本）。
+
+> 使用 package-lock.json 要确保 npm 的版本在5.6以上，因为在5.0 - 5.6中间，对 package-lock.json 的处理逻辑进行过几次更新，5.6版本后处理逻辑逐渐稳定
+
+
+
+**下面以 vue 的安装为例子说明：**
+
+> 例1：没有 package-lock.json 的情况下
+
+```js
+// package.json
+
+"dependencies": {
+  "vue": "^2.2.0"
+}
+```
+
+当没有 package-lock.json 文件，而且 package.json 中：vue 的版本是 2.2.0；但是当前最新的 vue2.x 版本是 2.6.12，那么此时执行 `npm install` 的时候，会发现：生成了 package-lock.json 文件，并且：
+
+- package.json 中显示的 vue 版本还是 2.2.0
+
+  ![](/imgs/img18.png)
+
+- 但是 package-lock.json 中 vue 的版本自动升级为 2.6.12
+
+  ![](/imgs/img19.png)
+
+- 再看 node_modules 中 vue 的版本也是 2.6.12
+
+  ![](/imgs/img20.png)
+
+这就说明，在没有 package-lock.json 的情况下，而 package.json 的 vue 版本号前带 `^`，那么符合自动升级原则就会自动升级
+
+
+
+> 例2、存在 package-lock.json 的情况1
+
+```js
+// package.json
+
+"dependencies": {
+  "vue": "^2.2.0"
+}
+
+
+// package-lock.json
+"dependencies": {
+  "vue": {
+    "version": "2.2.0",
+    "resolved": "https://registry.npm.taobao.org/vue/download/vue-2.2.0.tgz",
+    "integrity": "sha1-9FhpIM421TlEqyesUjbtkwOka0c="
+  }
+}
+```
+
+删除 node_modules 重新进行 `npm install`，会发现无论是 package.json 或是 package-lock.json 或是 node_modules 的 vue 版本都是 2.2.0，不会说当前 vue2.x 的最新版本是 2.6.12 就自动升级安装 2.6.12 版本。
+
+此时，如果想要将 vue2.2.0 升级为 2.6.12，可以执行 `npm i vue@2.6.12 -S` ，那么就会同时更新 package.json、package-lock.json 和 node_modules 中 vue 的版本为 2.6.12。
+
+
+
+> 例3：存在 package-lock.json 的情况2
+
+```js
+// package.json
+
+"dependencies": {
+  "vue": "^2.2.0"
+}
+
+
+// package-lock.json
+"dependencies": {
+  "vue": {
+    "version": "2.2.0",
+    "resolved": "https://registry.npm.taobao.org/vue/download/vue-2.2.0.tgz",
+    "integrity": "sha1-9FhpIM421TlEqyesUjbtkwOka0c="
+  }
+}
+```
+
+本来 package.json 和 package-lock.json 中的 vue 版本都是 2.2.0
+
+但是如果手动将 package.json 中的 vue 版本升级，修改为 `"vue": "^2.3.0"`：
+
+- 在对比 package.json 与 package-lock.json 的 vue 版本时发现对不上，就会重新构建依赖树
+- 又因为 package.json 中的 vue 版本前面带 `^`，那么在规则允许的范围下，会下载最新的 vue2.6.12 版本，并且更新 package.json、package-lock.json 和 node_modules 中的 vue 版本
+
+
+
+> 例3：存在 package-lock.json 的情况3
+
+```js
+// package.json
+
+"dependencies": {
+  "vue": "^2.2.0"
+}
+
+
+// package-lock.json
+"dependencies": {
+  "vue": {
+    "version": "2.2.0",
+    "resolved": "https://registry.npm.taobao.org/vue/download/vue-2.2.0.tgz",
+    "integrity": "sha1-9FhpIM421TlEqyesUjbtkwOka0c="
+  }
+}
+```
+
+本来 package.json 和 package-lock.json 中的 vue 版本都是 2.2.0
+
+但是如果手动将 package.json 中的 vue 版本降级，修改为 `"vue": "^2.1.0"`：
+
+- 在对比 package.json 与 package-lock.json 的 vue 版本时发现对不上，就会重新构建依赖树
+- 但是发现 2.1.0 不再允许的更新规则范围，那么依然会下载 vue2.2.0 版本，那么此时 package-lock.json 和 node_modules 中的 vue 是2.2.0 版本，package.json 中为手动修改的 2.1.0 版本。
+
+
+
+**总结：**
+
+- 如果想要手动升级或者降级某个包的版本，最好是使用 `npm i vue@2.6.12` 这种指定版本的方式，这种方式保证了 package.json、package-lock.json、node_modules 中的包版本符合指定要求和保证三者包版本的一致性。
+
+- 在将代码放到 github 之类的代码仓库时，最好将 package-lock.json 一起上传，保证团队所有的小伙伴使用的都是统一版本的依赖包。
+
+
+
+#### 6.2.2、package-lock.json 一些属性含义
+
+```js
+{
+  "name": "npmpackage",
+  "version": "1.0.0",
+  "lockfileVersion": 1,
+  "requires": true,
+  "dependencies": {
+    "axios": {
+      "version": "0.21.1",
+      "resolved": "https://registry.npm.taobao.org/axios/download/axios-0.21.1.tgz?cache=0&sync_timestamp=1608609215811&other_urls=https%3A%2F%2Fregistry.npm.taobao.org%2Faxios%2Fdownload%2Faxios-0.21.1.tgz",
+      "integrity": "sha1-IlY0gZYvTWvemnbVFu8OXTwJsrg=",
+      "requires": {
+        "follow-redirects": "^1.10.0"
+      }
+    },
+    "follow-redirects": {
+      "version": "1.14.0",
+      "resolved": "https://registry.nlark.com/follow-redirects/download/follow-redirects-1.14.0.tgz?cache=0&other_urls=https%3A%2F%2Fregistry.nlark.com%2Ffollow-redirects%2Fdownload%2Ffollow-redirects-1.14.0.tgz",
+      "integrity": "sha1-9dJg+VxfjBBYlEkf7uXciZO0Av4="
+    }
+  }
+}
+```
+
+- name：项目名称
+- version：项目版本
+- lockfileVersion：package-lock.json 文件版本
+- requires：设置为 true 代表使用 require 来标记模块的依赖关系
+- dependencies：项目所有的依赖：
+  - 当前项目依赖 axios，axios 依赖 follow-redireacts，所以 follow-redireacts 在axios 的 require 里面
+  - version：安装的 axios 的版本
+  - resolved：记录下载的地址，也就是 axios 在 registry 仓库中的位置
+  - integrity：用来从缓存中获取索引，再通过索引去获取压缩包文件
+  - require：axios 还依赖于哪些模块
+
+
+
+### 6.3、npm install 装包及其原理
+
+在使用 `npm init` 初始化了 npm 环境时候，就可以使用 `npm install 包名` 的方式去安装第三方工具包了。
+
+
+
+#### 6.3.1、npm install 装包
+
+**使用方式：**
+
+`npm install 包名` 或者使用缩写形式 `npm i 包名`
+
+
+
+**安装全部依赖：**
+
+```js
+npm i
+```
+
+当 package.json 里面 devDependencies 和 dependencies  有依赖的时候，将被全部安装
+
+
+
+**全局安装和项目局部安装：**
+
+- 全局安装： `npm i xxx -g`
+- 项目局部安装：`npm i xxx`
+
+通常使用 npm 全局安装的包都是一些工具包，比如全局安装 yarn 工具
+
+像 axios、express、koa 等在项目里面直接使用的库文件不能进行全局安装，原因：
+
+- 多人合作项目，全局安装的包根本不会记录在 package.json 中，那到时候别人从代码仓库 clone 下来的项目就根本不知道使用了这个包
+- 全局安装既然不记录在项目的 package.json 中，那么就代表着不会被安装到项目中的 node_modules 中，如果通过 require 引用了这个包，根据 Node 的 require() 函数的查找规则，根本在 node_modules 中找不到这个包，那么会报错：模块找不到
+
+
+
+**--save-dev 和 --save**
+
+```js
+npm i xxx --save || npm i xxx -S
+
+npm i xxx --save-dev  || npm i xxx -D
+```
+
+- --save-dev：简写 -D，代表安装到 package.json 下的 devDependencies中，一般是在开发阶段需要的包，但是在项目部署后是不需要的，会使用这个命令安装；例如： webpack、babel 等
+- --save：简写 -S，代表安装到 package.json 下的 dependencies 中，用于生产和开发，在项目部署后仍然需要用到；例如：day.js、axios 等
+
+
+
+如果直接使用 `npm i xxx`，后面既不带 -S，也不带 -D，那么安装的依赖默认会放到 dependencies  中
+
+
+
+#### 6.3.2、npm install 原理
+
+执行 `npm install` 的时候，将依赖包安装到了 node_modules 中，主要原理是：
+
+![](/imgs/img17.png)
+
+- 执行 `npm install`
+
+- 检查 `.npmrc` 文件，判断有没有使用一些镜像源，比如淘宝镜像源等。
+
+  - 查找 `.npmrc` 文件顺序：项目级的 `.npmrc` 文件 --> 用户级的 `.npmrc` 文件> 全局级的`.npmrc` 文件 > npm 内置的 `.npmrc` 文件
+
+- 检查有没有 `package-lock.json` 文件
+
+- 没有 `package-lock.json` 文件
+
+  - 从 `npm` 远程仓库获取包信息（如果设置了镜像源，则是从镜像源中获取）
+
+  - 根据 `package.json` 构建依赖树，过程是：
+
+    - 构建依赖树时，不管其是直接依赖还是子依赖的依赖，优先将其拍平放置在 `node_modules` 根目录，**这就是扁平化**
+    - 当遇到相同模块时（即同一个包可能被其他多个包所依赖），判断已放置在依赖树的模块版本是否符合这个相同模块的版本范围，如果符合则跳过，不符合则在当前模块的 `node_modules` 下放置该模块
+
+    > 这一步仅仅是确定逻辑上的依赖树，并没有进行安装，后面会根据这个依赖结构去下载或拿到缓存中的依赖包
+
+  - 在缓存中一次查找每个依赖树的包
+
+    - 没有缓存
+      - 从 npm 仓库下载包（或者从指定镜像源）
+      - 检验包的完整性（用户下载依赖包到本地后，需要确定在下载过程中没有出现错误，所以在下载完成之后需要在本地在计算一次文件的 `hash` 值，如果两个 `hash` 值是相同的，则确保下载的依赖是完整的）
+      - 完整性检验通过
+        - 将下载的包复制到 `npm` 缓存目录
+        - 将下载的包按照依赖结构解压到 `node_modules`
+      - 完整性检验不通过，需要重新下载
+    - 有缓存
+      - 将缓存按照依赖结构解压到 `node_modules`
+
+  - 将包解压到 `node_modules`
+
+  - 生成 `package-lock.json` 文件
+
+- 有 `package-lock.json` 文件
+
+  - 检查 `package.json` 中的依赖版本是否和 `package-lock.json` 中的依赖是否有冲突
+    - 有冲突，依次执行重新从远程仓库获取依赖包信息及后面流程
+    - 没有冲突，检查缓存
+      - 没有缓存，一次执行重新从远程仓库下载依赖包及后面流程
+      - 有缓存，直接将缓存的包文件解压到 `node_modules`，后生成 `package-lock.json` 文件
+
+- 最后完成安装
+
+
+
+> 问题：为什么需要将 node_modules 中的包扁平化
+
+其实，在 `npm` 的早期版本， `npm` 处理依赖的方式简单粗暴，以递归的形式，严格按照 `package.json` 结构以及子依赖包的 `package.json` 结构将依赖安装到他们各自的 `node_modules` 中。直到有子依赖包不在依赖其他模块。
+
+但是这样子处理会带来很大的问题：
+
+- 如果依赖的模块非常之多，那么 `node_modules` 将非常庞大，嵌套层级非常之深
+- 在不同层级的依赖中，可能引用了同一个模块，导致大量冗余
+- 在 `Windows` 系统中，文件路径最大长度为260个字符，嵌套层级过深可能导致不可预知的问题
+
+
+
+### 6.4、其他一些常用 npm 命令
+
+- 卸载某个依赖包：`npm uninstall 包名`
+
+  ```js
+  npm uninstall vue
+  ```
+
+- 清除缓存：`npm cache clean`
+
+- 查看某个包的最新版本和所有版本
+
+  - 查看最新版本： `npm view package version`
+  - 查看所有版本：`npm view conard versions`
+
+  ```js
+  // 查看 vue 最新版本
+  npm view vue version
+  
+  // 查看 vue 所有版本
+  npm view vue versions
+  ```
+
+- 查看当前仓库依赖树上所有包的版本信息：`npm ls`
+
+  ![](/imgs/img21.png)
+
+- 查看哪些包没有升级到最新版本：`npm outdated`
+
+  ![](/imgs/img22.png)
+
+  可以看到当前项目的 vue 是 2.3.0 版本，最新的 vue2.x 是2.6.12 版本，没升级
+
+- 查看当前镜像源：`npm config get registry`
+
+
+
+更多的 npm 命令可以查看官方文档： https://docs.npmjs.com/cli-documentation/cli
+
+
+
+### 6.5、yarn
+
+yarn是由Facebook、Google、Exponent 和 Tilde 联合推出了一个新的 JS 包管理工具，推出时间为 2016 年
+
+那时 `npm` 还处于 `V3` 版本时期，存在这非常多的缺点：比如说没有缓存、安装依赖速度慢、版本依赖混乱（树状地柜结构）等等一系列的问题。从 npm5 版本开始，对这些都进行了改进。
+
+
+
+#### 6.5.1、使用 yarn 工具
+
+要想使用 yarn 工具，就需要对其进行安装
+
+```js
+npm i yarn -g
+```
+
+
+
+为项目初始化一个 yarn 环境
+
+```js
+yarn init -y
+```
+
+执行玩之后也会生成一份 package.json 文件
+
+
+
+安装依赖包，这里以 vue 为例
+
+```js
+yarn add vue
+```
+
+执行完命令，会将 vue 安装到 node_modules 中，并且在根目录多一份 yarn.lock 文件，用于锁定版本
+
+
+
+`yarn add vue@2.2.0` 可以安装指定的 vue 版本
+
+
+
+#### 6.5.2、常用命令与 npm 对比
+
+| npm                       | yarn                   |
+| ------------------------- | ---------------------- |
+| npm install               | yarn install           |
+| npm install package       | yarn add package       |
+| npm install package -S    | yarn add package       |
+| yarn add package -D       | yarn add package -D    |
+| npm install package@x.y.z | yarn add package@x.y.z |
+| npm uninstall package     | yarn remove package    |
+| npm cache clean           | yarn cache clean       |
+| npm outdated              | yarn outdated          |
+
+
+
+### 6.6、nrm
+
+因为上传到 npm 的包都是保存在 npm 的 registry 仓库中的，而这个仓库是在国外，国内可能会因为网络原因访问很慢或者下载失败。
+
+而在国内，淘宝通过镜像连接 npm 的 registry 仓库，将 npm 仓库上的包放到国内的服务器上，大概每 10 分钟更新同步一次。
+
+
+
+#### 6.6.1、给 npm 设置镜像源
+
+查看当前 npm 镜像源：`npm config get registry`
+
+直接将 npm 镜像源设置为 淘宝镜像源：`npm config set registry https://registry.npm.taobao.org`
+
+
+
+#### 6.6.2、使用 nrm
+
+nrm 可以帮助我们方便地切换不同的镜像源，包括 taobao、npm、yarn、cnpm 等
+
+
+
+安装 nrm
+
+```js
+npm i nrm -g
+```
+
+
+
+查看 nrm 支持的镜像源：`nrm ls`
+
+![](/imgs/img23.png)
+
+
+
+可以看到支持：npm、yarn、cnpm、taobao 等，并且当前正在使用的是 taobao 镜像源
+
+
+
+切换镜像源：`nrm use yarn`，切换完之后再执行 `nrm ls` 查看：可以看到镜像源已经切换
+
+![](/imgs/img24.png)
+
+
+
+或者使用 `npm current` 查看当前正在使用的镜像源
+
+
+
+### 6.7、npx
+
+npx 是 npm5.2 之后自带的一个命令。它有很多用处，但是比较常见的是使用它来调用项目中的某个模块的指令。
+
+
+
+这里以 webpack 为例：
+
+比如现在需要查看 webpack 的版本号，常规的方式是：
+
+- 明确查找到 node_module 下面的 webpack
+
+  ```js
+  node ./node_modules/.bin/webpack --version
+  ```
+
+- 在 scripts 定义脚本，来执行 webpack
+
+  ```js
+  "scripts": {
+    "webpack": "webpack --version"
+  }
+  ```
+
+
+
+但是，有了 npx 后，可以：
+
+```js
+npx webpack --version
+```
+
+其实 npx 主要原理就是： **npx 会到当前目录的 `node_modules/.bin` 目录下查找对应的命令**。
