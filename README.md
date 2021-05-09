@@ -1,5 +1,12 @@
 # Node.js
 
+Node.js 官网：
+
+-  英文官网： https://nodejs.org/en/
+- 中文官网：http://nodejs.cn/
+
+node技术栈：https://www.nodejs.red/#/README
+
 
 
 ## 1、Node.js 安装、版本工具
@@ -7,10 +14,6 @@
 ### 1.1、安装
 
 Node 的安装非常简单，只需要在官网上下载对应平台的安装包安装即可
-
-
-
-Node.js 官网： https://nodejs.org/en/
 
 
 
@@ -915,7 +918,7 @@ if (!fs.existsSync(dir)) {
   
   const dir = resolve(__dirname, './common')
   getFiles(dir)
-  ```
+```
 
 - 第二种方法：通过 fs.readdir 的 withFileTypes: true 在读取的时候把文件类型一起获取
 
@@ -1653,3 +1656,280 @@ npx webpack --version
 ```
 
 其实 npx 主要原理就是： **npx 会到当前目录的 `node_modules/.bin` 目录下查找对应的命令**。
+
+
+
+## 7、Node 的 Buffer
+
+
+
+### 7.1、了解二进制数据
+
+在计算机中，所有的内容：文字、数字、图片、音频、视频等内容最终都是会使用二进制来表示。
+
+对于前端而言，一般是很少去和二进制打交道的。比如就图片而言：无论是 html 还是 js，一般都是不直接操作图片的，只是告诉浏览器一个图片地址，浏览器负责获取这个图片，并且最终将这个图片渲染出来。
+
+而图片是由一个个的像素点组成的，每个像素点又由很多而 rgb 或者其他组成，那么在计算机中怎么存储这些 rgb 呢？答案就是二进制。因为机器只能识别二进制数据。
+
+对于前端而言，这些二进制的处理都交给了浏览器，因为 js更多的是直接去处理非常直观的数据：比如字符串，而对于二进制的处理，显得有点乏力（当然可以通过一些第三方库实现，但是毕竟不是本身的能力）
+
+
+
+但是，对于服务器而言：服务器要处理的本地文件类型相对较多：
+
+- 比如某一个保存文本的文件并不是使用 utf-8 进行编码的，而是用 GBK，那么就必须读取到文件的二进制数据，再通过 GKB 转换成对应的文字
+- 比如需要读取的是一张图片数据（二进制），再通过某些手段对图片数据进行二次的处理（裁剪、格式转换、旋转、添加滤镜），Node中有一个 Sharp 的库，就是读取图片或者传入图片的 Buffer 对其再进行处理
+
+
+
+所以如果需要使用 Node 开发服务端，那么就必须要有操作二进制的能力。因此，Node 提供了 Buffer 类。
+
+
+
+### 7.2、Buffer
+
+#### 7.2.1、buffer 与 二进制
+
+buffer ：可以看成是存储二进制的一个数组，这个数组中的每一项，可以保存 8 位二进制： 00000000
+
+一句话概括： `Buffer` 类是一个全局变量，用于直接处理二进制数据，提供工具类方法
+
+
+
+>  为什么是 8 位?
+
+在计算机中，一般很少直接操作一位二进制数据，因为一位二进制存储的数据是非常有限的；通常会将 8 位合在一起作为一个单元，这个单元称之为一个字节（byte）
+
+也就是：1byte = 8bit，1kb = 1024 byte，1M = 1024kb
+
+
+
+#### 7.2.2、buffer 基本使用
+
+**通过 Buffer.from 创建 buffer：**
+
+```js
+const bufferStr = Buffer.from('gweid')
+console.log(bufferStr) // <Buffer 67 77 65 69 64>
+```
+
+执行，可以看到输出的是：`<Buffer 67 77 65 69 64>`
+
+上面不是说 buffer 存储的是二进制吗？现在怎么是十六进制？实际上 buffer 存储还是以二进制存储的，但是二进制是表示起来是 01000001 这样，太长，显示起来不方便看，所以显示的时候转换为十六进制方便阅读.
+
+
+
+可以看到，对于英文字符串，一个英文只需要一个字节byte 就可以存储。如果对于中文呢？
+
+```js
+const bufferZh = Buffer.from('中国话')
+console.log(bufferZh) // <Buffer e4 b8 ad e5 9b bd e8 af 9d>
+```
+
+输出的是 `<Buffer e4 b8 ad e5 9b bd e8 af 9d>`，总共九个字节，那么就是说明一个中文需要三个字节byte 来存储。当然，这个也不是确定的，因为在使用 buffer.form 的时候，如果没有传编码方式，默认就是 utf8 编码，utf8 编码就是：英文 1byte，中文 3byte
+
+
+
+如果使用 `utf16le` 编码：
+
+```js
+const bufferZh = Buffer.from('中国话', 'utf16le')
+console.log(bufferZh) // <Buffer 2d 4e fd 56 dd 8b
+```
+
+结果就不一样了，每个中文 2byte。但是，一般字符串编码使用 utf8
+
+
+
+**将 buffer 解码还原**
+
+```js
+// 转换为 buffer，默认使用 utf8
+const bufferZh = Buffer.from('中国话')
+console.log(bufferZh)
+
+// 对 buffer 进行解码，默认使用 utf8
+console.log(bufferZh.toString())
+```
+
+解码 buffer 很简单，只需要使用 xxx.toString() 即可
+
+但是要注意，转换为 buffer 的编码方式与还原的编码方式需要一致，比如上面的都使用呢 utf8。如果不一致会出现乱码问题。
+
+
+
+**通过 Buffer.alloc 创建 buffer**
+
+Buffer.alloc(size[, fill[, encoding]])
+
+- `size`： 新 `Buffer` 的期望长度
+- `fill`： 用于预填充新 `Buffer` 的值。默认使用  0
+- `encoding`： 编码方式，默认 `utf8`
+
+```js
+const bufferStr = Buffer.alloc(4)
+console.log(bufferStr) // <Buffer 00 00 00 00>
+```
+
+更改里面的某一项：
+
+```js
+const bufferStr = Buffer.alloc(4)
+
+bufferStr[0] = 'w'.charCodeAt() // 字符串必须要通过 charCodeAt 转换
+bufferStr[1] = 
+bufferStr[2] = 0x66
+
+console.log(bufferStr) // <Buffer 77 64 66 00>
+```
+
+
+
+其实，除了上面的两种 buffer 创建方式，还有很多 buffer 的创建方式，详细可以查看官方文档：https://nodejs.org/dist/latest-v14.x/docs/api/buffer.html
+
+
+
+#### 7.2.3、buffer 文件读取
+
+其实，通过 fs 读取文件，无论是文本、图片、音视频，都是以二进制也就是 buffer 的方式读取到的。
+
+```js
+const fs = require('fs')
+
+fs.readFile('./a.txt', (err, data) => {
+  console.log(data) // <Buffer 68 65 6c 6c 6f 2c 20 62 75 66 66 65 72>
+})
+```
+
+对于文本，可以通过指定编码方式读取：
+
+```js
+const fs = require('fs')
+
+fs.readFile('./a.txt', 'utf8', (err, data) => {
+  console.log(data) // hello, buffer
+})
+```
+
+
+
+同样，读取图片也是：
+
+```js
+const fs = require('fs')
+
+fs.readFile('./img.png', (err, data) => {
+  console.log(data)
+})
+```
+
+图片读取到的也是 buffer，拿到这个图片 buffer，可以直接写入，也可以通过操作图片的 buffer 进行旋转、裁剪等一系列图片的操作
+
+例如，这里借助 [sharp](https://github.com/lovell/sharp) 库进行图片裁剪
+
+```js
+const sharp = require('sharp')
+
+sharp('./img.png')
+  .resize(400, 300)
+  .toFile('./img1.png')
+```
+
+
+
+#### 7.2.4、buffer 的内存分配
+
+buffer 的内存分配采用了  slab 机制进行**预先申请、事后分配**。
+
+slab 有三种状态：
+
+- full：完全分配状态（内存占满）
+- partial：部分分配状态（只使用了部分内存）
+- empty：没有被分配状态（内存完全没有被用过）
+
+
+
+事实上我们创建 Buffer 时，并不会频繁的向操作系统申请内存，它会默认先申请一个 8 * 1024 个字节大小的内存，也就是 8kb
+
+> https://github.com/nodejs/node/blob/v14.16.1/lib/buffer.js#L136
+
+```js
+Buffer.poolSize = 8 * 1024;
+let poolSize, poolOffset, allocPool;
+
+// ...
+
+function createPool() {
+  poolSize = Buffer.poolSize;
+  allocPool = createUnsafeBuffer(poolSize).buffer;
+  markAsUntransferable(allocPool);
+  poolOffset = 0;
+}
+createPool();
+```
+
+在加载 buffer 模块时，直接执行 createPool() 初始化一个 8kb 的内存空间，这也是**为什么说 Buffer 在创建时大小就已经被确定的且无法调整**；另外还声明了变量 **poolOffset** 用来**记录已经被使用的空间**
+
+此时， slab 如下：
+
+![](/imgs/img25.png)
+
+
+
+通过 Buffer.alloc 分配一个 2048 字节的 buffer
+
+```js
+Buffer.alloc(2 * 1024)
+```
+
+那么 slab 会变为：
+
+![](/imgs/img26.png)
+
+具体的分配过程可以查看：
+
+> https://github.com/nodejs/node/blob/v14.16.1/lib/buffer.js#L410
+
+```js
+function allocate(size) {
+  if (size <= 0) {
+    return new FastBuffer();
+  }
+    
+  // 8096 右移 1 为 4096，即要分配的空间小于 4kb
+  if (size < (Buffer.poolSize >>> 1)) {
+    // slab 剩余空间不够分配， 通过 createPool 再申请一块 slab 的内存
+    if (size > (poolSize - poolOffset))
+      createPool();
+      
+    // 够分配那就直接分配，并且通过 poolOffset 记录当前已经使用的空间
+    const b = new FastBuffer(allocPool, poolOffset, size);
+    poolOffset += size;
+    alignPool();
+    return b;
+  }
+    
+  // 要分配的空间大于 4kb，直接去创建新的 slab 内存
+  return createUnsafeBuffer(size);
+}
+```
+
+
+
+**buffer 内存分配总结：**
+
+- 在初次加载时就会初始化 1 个 8KB 的内存空间 slab
+- 根据申请的内存大小分为`小 Buffer 对象`和`大 Buffer 对象`
+- 小 Buffer （小于 4kb ）情况，判断这个 slab 剩余空间是否足够容纳
+  - 若足够就去使用剩余空间分配，并且记录下已经使用的内存空间
+  - 若不足，执行 createPool 创建一个新的 slab 空间用来分配
+- 大 Buffer 对象（大于 4kb ）情况，直接 createUnsafeBuffer(size) 创建
+
+为什么要要判断区别大buffer对象还是小buffer对象？主要是因为不要每次创建小buffer对象时都去向系统申请内存调用。
+
+不论是小 Buffer 对象还是大 Buffer 对象，内存分配是在 C++ 层面完成，内存管理在 JavaScript 层面，最终还是可以被 V8 的垃圾回收标记所回收，回收的是 Buffer 对象本身，堆外内存的那些部分只能交给 C++
+
+
+
+可参考： [Node Buffer 对象的探究与内存分配代码挖掘](https://www.cnblogs.com/everlose/p/13054503.html)
+
