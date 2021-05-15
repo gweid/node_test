@@ -672,7 +672,7 @@ const moduleB = require('./b')
 
 所以在早期为了可以在浏览器中使用模块化，主要使用的方案有两种：AMD 和 CMD
 
-但是，由于 webpack 等工具可以实现对 Commons 或者 ES Module代码的转换，并且现代浏览器开始逐步支持 ES Moudle，AMD 和 CMD 其实已经很少使用了。更多的是在服务端使用 CommonJs，在浏览器端使用 es6 的模块化方案（低版本浏览器使用 webpack 转换）
+但是，由于 webpack 等工具可以实现对 CommonJs 或者 ES Module代码的转换，并且现代浏览器开始逐步支持 ES Moudle，AMD 和 CMD 其实已经很少使用了。更多的是在服务端使用 CommonJs，在浏览器端使用 es6 的模块化方案（低版本浏览器使用 webpack 转换）
 
 
 
@@ -719,6 +719,8 @@ console.log(moduleInfo)
 ## 5、Node 常用的内置模块
 
 Node 中有非常多内置模块，这些内置模块构成了 Node 强大的能力。
+
+这里只分析一些比较常用、重要的模块，其他的一些方法可以查看 Node 官方文档：https://nodejs.org/dist/latest-v14.x/docs/api/events.html
 
 
 
@@ -1058,7 +1060,275 @@ setTimeout(() => {
 
 
 
-其他的一些方法也是当需要使用到的时候，参考文档即可：https://nodejs.org/dist/latest-v14.x/docs/api/events.html
+### 5.4、Buffer 模块
+
+#### 5.4.1、二进制
+
+在计算机中，所有的内容：文字、数字、图片、音频、视频等内容最终都是会使用二进制来表示。
+
+对于前端而言，一般是很少去和二进制打交道的。比如就图片而言：无论是 html 还是 js，一般都是不直接操作图片的，只是告诉浏览器一个图片地址，浏览器负责获取这个图片，并且最终将这个图片渲染出来。
+
+而图片是由一个个的像素点组成的，每个像素点又由很多而 rgb 或者其他组成，那么在计算机中怎么存储这些 rgb 呢？答案就是二进制。因为机器只能识别二进制数据。
+
+对于前端而言，这些二进制的处理都交给了浏览器，因为 js更多的是直接去处理非常直观的数据：比如字符串，而对于二进制的处理，显得有点乏力（当然可以通过一些第三方库实现，但是毕竟不是本身的能力）
+
+
+
+但是，对于服务器而言：服务器要处理的本地文件类型相对较多：
+
+- 比如某一个保存文本的文件并不是使用 utf-8 进行编码的，而是用 GBK，那么就必须读取到文件的二进制数据，再通过 GKB 转换成对应的文字
+- 比如需要读取的是一张图片数据（二进制），再通过某些手段对图片数据进行二次的处理（裁剪、格式转换、旋转、添加滤镜），Node中有一个 Sharp 的库，就是读取图片或者传入图片的 Buffer 对其再进行处理
+
+
+
+所以如果需要使用 Node 开发服务端，那么就必须要有操作二进制的能力。因此，Node 提供了 Buffer 类。
+
+
+
+#### 5.4.2、buffer 与 二进制
+
+buffer ：可以看成是存储二进制的一个数组，这个数组中的每一项，可以保存 8 位二进制： 00000000
+
+一句话概括： `Buffer` 类是一个全局变量，用于直接处理二进制数据，提供工具类方法
+
+
+
+>  为什么是 8 位?
+
+在计算机中，一般很少直接操作一位二进制数据，因为一位二进制存储的数据是非常有限的；通常会将 8 位合在一起作为一个单元，这个单元称之为一个字节（byte）
+
+也就是：1byte = 8bit，1kb = 1024 byte，1M = 1024kb
+
+
+
+#### 5.4.3、buffer 基本使用
+
+**通过 Buffer.from 创建 buffer：**
+
+```js
+const bufferStr = Buffer.from('gweid')
+console.log(bufferStr) // <Buffer 67 77 65 69 64>
+```
+
+执行，可以看到输出的是：`<Buffer 67 77 65 69 64>`
+
+上面不是说 buffer 存储的是二进制吗？现在怎么是十六进制？实际上 buffer 存储还是以二进制存储的，但是二进制是表示起来是 01000001 这样，太长，显示起来不方便看，所以显示的时候转换为十六进制方便阅读.
+
+
+
+可以看到，对于英文字符串，一个英文只需要一个字节byte 就可以存储。如果对于中文呢？
+
+```js
+const bufferZh = Buffer.from('中国话')
+console.log(bufferZh) // <Buffer e4 b8 ad e5 9b bd e8 af 9d>
+```
+
+输出的是 `<Buffer e4 b8 ad e5 9b bd e8 af 9d>`，总共九个字节，那么就是说明一个中文需要三个字节byte 来存储。当然，这个也不是确定的，因为在使用 buffer.form 的时候，如果没有传编码方式，默认就是 utf8 编码，utf8 编码就是：英文 1byte，中文 3byte
+
+
+
+如果使用 `utf16le` 编码：
+
+```js
+const bufferZh = Buffer.from('中国话', 'utf16le')
+console.log(bufferZh) // <Buffer 2d 4e fd 56 dd 8b
+```
+
+结果就不一样了，每个中文 2byte。但是，一般字符串编码使用 utf8
+
+
+
+**将 buffer 解码还原**
+
+```js
+// 转换为 buffer，默认使用 utf8
+const bufferZh = Buffer.from('中国话')
+console.log(bufferZh)
+
+// 对 buffer 进行解码，默认使用 utf8
+console.log(bufferZh.toString())
+```
+
+解码 buffer 很简单，只需要使用 xxx.toString() 即可
+
+但是要注意，转换为 buffer 的编码方式与还原的编码方式需要一致，比如上面的都使用呢 utf8。如果不一致会出现乱码问题。
+
+
+
+**通过 Buffer.alloc 创建 buffer**
+
+Buffer.alloc(size[, fill[, encoding]])
+
+- `size`： 新 `Buffer` 的期望长度
+- `fill`： 用于预填充新 `Buffer` 的值。默认使用  0
+- `encoding`： 编码方式，默认 `utf8`
+
+```js
+const bufferStr = Buffer.alloc(4)
+console.log(bufferStr) // <Buffer 00 00 00 00>
+```
+
+更改里面的某一项：
+
+```js
+const bufferStr = Buffer.alloc(4)
+
+bufferStr[0] = 'w'.charCodeAt() // 字符串必须要通过 charCodeAt 转换
+bufferStr[1] = 
+bufferStr[2] = 0x66
+
+console.log(bufferStr) // <Buffer 77 64 66 00>
+```
+
+
+
+其实，除了上面的两种 buffer 创建方式，还有很多 buffer 的创建方式，详细可以查看官方文档：https://nodejs.org/dist/latest-v14.x/docs/api/buffer.html
+
+
+
+#### 5.4.4、buffer 文件读取
+
+其实，通过 fs 读取文件，无论是文本、图片、音视频，都是以二进制也就是 buffer 的方式读取到的。
+
+```js
+const fs = require('fs')
+
+fs.readFile('./a.txt', (err, data) => {
+  console.log(data) // <Buffer 68 65 6c 6c 6f 2c 20 62 75 66 66 65 72>
+})
+```
+
+对于文本，可以通过指定编码方式读取：
+
+```js
+const fs = require('fs')
+
+fs.readFile('./a.txt', 'utf8', (err, data) => {
+  console.log(data) // hello, buffer
+})
+```
+
+
+
+同样，读取图片也是：
+
+```js
+const fs = require('fs')
+
+fs.readFile('./img.png', (err, data) => {
+  console.log(data)
+})
+```
+
+图片读取到的也是 buffer，拿到这个图片 buffer，可以直接写入，也可以通过操作图片的 buffer 进行旋转、裁剪等一系列图片的操作
+
+例如，这里借助 [sharp](https://github.com/lovell/sharp) 库进行图片裁剪
+
+```js
+const sharp = require('sharp')
+
+sharp('./img.png')
+  .resize(400, 300)
+  .toFile('./img1.png')
+```
+
+
+
+#### 5.4.5、buffer 的内存分配
+
+buffer 的内存分配采用了  slab 机制进行**预先申请、事后分配**。
+
+slab 有三种状态：
+
+- full：完全分配状态（内存占满）
+- partial：部分分配状态（只使用了部分内存）
+- empty：没有被分配状态（内存完全没有被用过）
+
+
+
+事实上我们创建 Buffer 时，并不会频繁的向操作系统申请内存，它会默认先申请一个 8 * 1024 个字节大小的内存，也就是 8kb
+
+> https://github.com/nodejs/node/blob/v14.16.1/lib/buffer.js#L136
+
+```js
+Buffer.poolSize = 8 * 1024;
+let poolSize, poolOffset, allocPool;
+
+// ...
+
+function createPool() {
+  poolSize = Buffer.poolSize;
+  allocPool = createUnsafeBuffer(poolSize).buffer;
+  markAsUntransferable(allocPool);
+  poolOffset = 0;
+}
+createPool();
+```
+
+在加载 buffer 模块时，直接执行 createPool() 初始化一个 8kb 的内存空间，这也是**为什么说 Buffer 在创建时大小就已经被确定的且无法调整**；另外还声明了变量 **poolOffset** 用来**记录已经被使用的空间**
+
+此时， slab 如下：
+
+![](/imgs/img25.png)
+
+
+
+通过 Buffer.alloc 分配一个 2048 字节的 buffer
+
+```js
+Buffer.alloc(2 * 1024)
+```
+
+那么 slab 会变为：
+
+![](/imgs/img26.png)
+
+具体的分配过程可以查看：
+
+> https://github.com/nodejs/node/blob/v14.16.1/lib/buffer.js#L410
+
+```js
+function allocate(size) {
+  if (size <= 0) {
+    return new FastBuffer();
+  }
+    
+  // 8096 右移 1 为 4096，即要分配的空间小于 4kb
+  if (size < (Buffer.poolSize >>> 1)) {
+    // slab 剩余空间不够分配， 通过 createPool 再申请一块 slab 的内存
+    if (size > (poolSize - poolOffset))
+      createPool();
+      
+    // 够分配那就直接分配，并且通过 poolOffset 记录当前已经使用的空间
+    const b = new FastBuffer(allocPool, poolOffset, size);
+    poolOffset += size;
+    alignPool();
+    return b;
+  }
+    
+  // 要分配的空间大于 4kb，直接去创建新的 slab 内存
+  return createUnsafeBuffer(size);
+}
+```
+
+
+
+**buffer 内存分配总结：**
+
+- 在初次加载时就会初始化 1 个 8KB 的内存空间 slab
+- 根据申请的内存大小分为`小 Buffer 对象`和`大 Buffer 对象`
+- 小 Buffer （小于 4kb ）情况，判断这个 slab 剩余空间是否足够容纳
+  - 若足够就去使用剩余空间分配，并且记录下已经使用的内存空间
+  - 若不足，执行 createPool 创建一个新的 slab 空间用来分配
+- 大 Buffer 对象（大于 4kb ）情况，直接 createUnsafeBuffer(size) 创建
+
+为什么要要判断区别大buffer对象还是小buffer对象？主要是因为不要每次创建小buffer对象时都去向系统申请内存调用。
+
+不论是小 Buffer 对象还是大 Buffer 对象，内存分配是在 C++ 层面完成，内存管理在 JavaScript 层面，最终还是可以被 V8 的垃圾回收标记所回收，回收的是 Buffer 对象本身，堆外内存的那些部分只能交给 C++
+
+
+
+可参考： [Node Buffer 对象的探究与内存分配代码挖掘](https://www.cnblogs.com/everlose/p/13054503.html)
 
 
 
@@ -1659,277 +1929,631 @@ npx webpack --version
 
 
 
-## 7、Node 的 Buffer
+## 7、事件循环Event Loop 与异步 IO
+
+首先，理解事件循环是什么：事件循环可以理解 JavaScript 和浏览器或者 Node 之间的一个桥梁
+
+- 浏览器的事件循环是 JavaScript 代码和浏览器 API 调用(setTimeout/AJAX/监听事件等)的一个桥梁，两者之间通过桥梁的回调函数进行沟通
+- Node 的事件循环是 JavaScript 代码和系统调用（file system、network等）之间的一个桥梁，两者之间通过桥梁的回调函数进行沟通
+
+![](/imgs/img27.png)
 
 
 
-### 7.1、了解二进制数据
+### 7.1、进程和线程
 
-在计算机中，所有的内容：文字、数字、图片、音频、视频等内容最终都是会使用二进制来表示。
-
-对于前端而言，一般是很少去和二进制打交道的。比如就图片而言：无论是 html 还是 js，一般都是不直接操作图片的，只是告诉浏览器一个图片地址，浏览器负责获取这个图片，并且最终将这个图片渲染出来。
-
-而图片是由一个个的像素点组成的，每个像素点又由很多而 rgb 或者其他组成，那么在计算机中怎么存储这些 rgb 呢？答案就是二进制。因为机器只能识别二进制数据。
-
-对于前端而言，这些二进制的处理都交给了浏览器，因为 js更多的是直接去处理非常直观的数据：比如字符串，而对于二进制的处理，显得有点乏力（当然可以通过一些第三方库实现，但是毕竟不是本身的能力）
+在说事件循环之前，先了解一下进程与线程
 
 
 
-但是，对于服务器而言：服务器要处理的本地文件类型相对较多：
+#### 7.1.1、进程与线程基本概念
 
-- 比如某一个保存文本的文件并不是使用 utf-8 进行编码的，而是用 GBK，那么就必须读取到文件的二进制数据，再通过 GKB 转换成对应的文字
-- 比如需要读取的是一张图片数据（二进制），再通过某些手段对图片数据进行二次的处理（裁剪、格式转换、旋转、添加滤镜），Node中有一个 Sharp 的库，就是读取图片或者传入图片的 Buffer 对其再进行处理
+进程：通俗地讲，可以认为启动一个应用程序，就会默认启动一个进程（也可能是多个进程）
 
-
-
-所以如果需要使用 Node 开发服务端，那么就必须要有操作二进制的能力。因此，Node 提供了 Buffer 类。
+线程：每一个进程中，都会启动一个线程用来执行程序中的代码，这个线程被称之为主线程，当然，除了诛仙程以外进程内还可以有其它的线程；所以，也可以说进程是线程的容器
 
 
 
-### 7.2、Buffer
+下面以工厂为例，解析进程与线程关系：
 
-#### 7.2.1、buffer 与 二进制
-
-buffer ：可以看成是存储二进制的一个数组，这个数组中的每一项，可以保存 8 位二进制： 00000000
-
-一句话概括： `Buffer` 类是一个全局变量，用于直接处理二进制数据，提供工具类方法
+- 操作系统类似于一个工厂
+- 工厂中里有很多车间，这个车间就是进程
+- 每个车间可能有一个以上的工人在做事，这个工人就是线程
 
 
 
->  为什么是 8 位?
+#### 7.1.2、多进程与多线程开发
 
-在计算机中，一般很少直接操作一位二进制数据，因为一位二进制存储的数据是非常有限的；通常会将 8 位合在一起作为一个单元，这个单元称之为一个字节（byte）
+操作系统是如何做到同时让多个进程（听歌软件放歌、ide 写代码、浏览器查阅资料、...）同时工作呢?
 
-也就是：1byte = 8bit，1kb = 1024 byte，1M = 1024kb
+- 这是因为 CPU 的运算速度非常快，它可以快速的在多个进程之间迅速的切换
+- 当我们的进程中的线程获取获取到时间片时，就可以快速执行编写的代码
+- 对于用户来说是感受不到这种快速的切换的
+
+![](/imgs/img28.png)
 
 
 
-#### 7.2.2、buffer 基本使用
+### 7.2、javascript 和 浏览器
 
-**通过 Buffer.from 创建 buffer：**
+#### 7.2.1、javascript 单线程
+
+- JS 语言的一大特色就是单线程，所谓单线程就是，**同一时间只能做一件事**。
+
+- 为什么 JS 不能有多个线程呢？因为 JS 主要用途是与**用户进行交互以及操作DOM**。这就决定了它只能是单线程，否则假设有多个线程，一个线程在某个 DOM 节点上添加内容，同时另一个线程又要删除这个节点，这时浏览器该以谁为准呢
+
+
+
+#### 7.2.2、浏览器多进程
+
+- 目前多数的浏览器其实都是多进程的，当我们打开一个 tab 页面时就会开启一个新的进程，这是为了防止一个页面卡死而造成所有页面无法响应，整个浏览器需要强制退出。
+
+- 每个进程中又有很多的线程，其中包括执行 JavaScript 代码的线程。
+
+
+
+### 7.3、浏览器的事件循环 Event Loop
+
+#### 7.3.1、同步和异步任务
+
+JS是一门单线程语言，它有一个主线程（main thread）和调用栈（也叫执行栈call-stack），**所有的任务都会被放到调用栈等待主线程执行**。单线程就意味着所有任务需要排队，前一个任务结束，才执行下一个任务。但是如果前一个任务耗时很长，后一个任务就需要一直等着了。如果其中一个任务很慢，占用很多时间，此时网页就会卡住，比如网页请求操作。
+
+
+
+所以 JS 语言的设计者意识到，主线程可以把等待中的任务挂起，先运行排在后面的任务。等到等待中任务返回结果后，再去执行挂起的任务。
+
+
+
+因此任务可以分为两种，一种是**同步任务**，一种是**异步任务**：
+
+- 同步任务：在主线程上排队执行的任务，只有前一个任务执行完毕，才执行下一个任务。
+
+- 异步任务：不进入主线程，而是进入任务队列，通过 `Event Loop` 机制等待合适的时间调用。
+
+
+
+#### 7.3.2、微任务与宏任务
+
+异步任务细分为：微任务与宏任务。
+
+在异步任务回调函数进入异步任务队列前会对这个异步任务进行判断看他是宏任务还是微任务，宏任务进入宏任务队列，微任务进入微任务队列。
+
+在同步任务执行完成后，会先执行微任务队列的任务，直到微任务队列为空，再执行宏任务队列中的任务。也就是说：也就是宏任务执行之前，必须保证微任务队列是空的，如果不为空，那么会优先执行微任务队列中的任务。
+
+
+
+浏览器常见的宏任务：setTimeout、setInterval、DOM 监听、ajax
+
+浏览器常见的微任务：promise.then、Mutation Observer API
+
+
+
+#### 7.3.3、浏览器的 Event Loop
+
+整个流程：
+
+![](/imgs/img29.png)
+
+
+
+事件循环异步任务队列流程：
+
+![](/imgs/img32.png)
+
+
+
+**执行顺序：**
+
+1. 在主线程上添加宏任务与微任务
+   - 执行顺序：线程 => 主线程上创建的微任务 => 主线程上创建的宏任务
+2. 在微任务中创建微任务
+   - 执行顺序：主线程 => 主线程上创建的微任务1 => 微任务1上创建的微任务2 => 主线程上创建的宏任务
+3. 微任务队列中创建的宏任务
+   - 执行顺序：主线程 => 主线程上创建的微任务 => 主线程上创建的宏任务 => 微任务中创建的宏任务
+4. 宏任务中创建微任务
+   - 执行顺序：主线程 => 主线程上创建的微任务 => 主线程上的宏任务队列1 => 宏任务队列1中创建的微任务
+5. async/await：分两种情况：
+   - 马上实行 await 同一行后面的代码，当结果是一个变量，例如 await 'test'，那么直接把 await 后面的代码注册为微任务，然后跳出 async 函数，执行后面代码
+   - 马上实行 await 同一行后面的代码，当结果是一个异步函数调用，那么根据异步函数类型将其放到宏任务或者微任务，此时并不会马上将 await 后面的代码注册为微任务，而是先跳出 async 函数，执行后面代码，最后把 await 后面的代码注册为微任务
+
+
+
+**例子1：**
 
 ```js
-const bufferStr = Buffer.from('gweid')
-console.log(bufferStr) // <Buffer 67 77 65 69 64>
-```
+console.log('同步任务--1');
 
-执行，可以看到输出的是：`<Buffer 67 77 65 69 64>`
+setTimeout(() => {
+  console.log('setTimeout--1');
+})
 
-上面不是说 buffer 存储的是二进制吗？现在怎么是十六进制？实际上 buffer 存储还是以二进制存储的，但是二进制是表示起来是 01000001 这样，太长，显示起来不方便看，所以显示的时候转换为十六进制方便阅读.
+const p = new Promise((resolve, reject) => {
+  console.log('promise--1');
+  resolve();
+})
 
+p.then(() => {
+  console.log('promise.then--1')
 
+  setTimeout(() => {
+    console.log('setTimeout--2');
 
-可以看到，对于英文字符串，一个英文只需要一个字节byte 就可以存储。如果对于中文呢？
+    p.then(() => {
+      console.log('promise.then--2');
+    })
+  })
 
-```js
-const bufferZh = Buffer.from('中国话')
-console.log(bufferZh) // <Buffer e4 b8 ad e5 9b bd e8 af 9d>
-```
+  p.then(() => {
+    console.log('promise.then--3');
+  })
+})
 
-输出的是 `<Buffer e4 b8 ad e5 9b bd e8 af 9d>`，总共九个字节，那么就是说明一个中文需要三个字节byte 来存储。当然，这个也不是确定的，因为在使用 buffer.form 的时候，如果没有传编码方式，默认就是 utf8 编码，utf8 编码就是：英文 1byte，中文 3byte
+p.then(() => {
+  console.log('promise.then--4')
+})
 
+setTimeout(() => {
+  console.log('setTimeout--3')
 
-
-如果使用 `utf16le` 编码：
-
-```js
-const bufferZh = Buffer.from('中国话', 'utf16le')
-console.log(bufferZh) // <Buffer 2d 4e fd 56 dd 8b
-```
-
-结果就不一样了，每个中文 2byte。但是，一般字符串编码使用 utf8
-
-
-
-**将 buffer 解码还原**
-
-```js
-// 转换为 buffer，默认使用 utf8
-const bufferZh = Buffer.from('中国话')
-console.log(bufferZh)
-
-// 对 buffer 进行解码，默认使用 utf8
-console.log(bufferZh.toString())
-```
-
-解码 buffer 很简单，只需要使用 xxx.toString() 即可
-
-但是要注意，转换为 buffer 的编码方式与还原的编码方式需要一致，比如上面的都使用呢 utf8。如果不一致会出现乱码问题。
-
-
-
-**通过 Buffer.alloc 创建 buffer**
-
-Buffer.alloc(size[, fill[, encoding]])
-
-- `size`： 新 `Buffer` 的期望长度
-- `fill`： 用于预填充新 `Buffer` 的值。默认使用  0
-- `encoding`： 编码方式，默认 `utf8`
-
-```js
-const bufferStr = Buffer.alloc(4)
-console.log(bufferStr) // <Buffer 00 00 00 00>
-```
-
-更改里面的某一项：
-
-```js
-const bufferStr = Buffer.alloc(4)
-
-bufferStr[0] = 'w'.charCodeAt() // 字符串必须要通过 charCodeAt 转换
-bufferStr[1] = 
-bufferStr[2] = 0x66
-
-console.log(bufferStr) // <Buffer 77 64 66 00>
-```
-
-
-
-其实，除了上面的两种 buffer 创建方式，还有很多 buffer 的创建方式，详细可以查看官方文档：https://nodejs.org/dist/latest-v14.x/docs/api/buffer.html
-
-
-
-#### 7.2.3、buffer 文件读取
-
-其实，通过 fs 读取文件，无论是文本、图片、音视频，都是以二进制也就是 buffer 的方式读取到的。
-
-```js
-const fs = require('fs')
-
-fs.readFile('./a.txt', (err, data) => {
-  console.log(data) // <Buffer 68 65 6c 6c 6f 2c 20 62 75 66 66 65 72>
+  p.then(() => {
+    console.log('promise.then--5');
+  })
 })
 ```
 
-对于文本，可以通过指定编码方式读取：
+结果是：
 
 ```js
-const fs = require('fs')
-
-fs.readFile('./a.txt', 'utf8', (err, data) => {
-  console.log(data) // hello, buffer
-})
+// 输出结果：
+//   同步任务--1
+//   promise--1
+//   promise.then--1
+//   promise.then--4
+//   promise.then--3
+//   setTimeout--1
+//   setTimeout--3
+//   promise.then--5
+//   setTimeout--2
+//   promise.then--2
 ```
 
 
 
-同样，读取图片也是：
+**例子2：async/await第一种情况：**
 
 ```js
-const fs = require('fs')
-
-fs.readFile('./img.png', (err, data) => {
-  console.log(data)
-})
-```
-
-图片读取到的也是 buffer，拿到这个图片 buffer，可以直接写入，也可以通过操作图片的 buffer 进行旋转、裁剪等一系列图片的操作
-
-例如，这里借助 [sharp](https://github.com/lovell/sharp) 库进行图片裁剪
-
-```js
-const sharp = require('sharp')
-
-sharp('./img.png')
-  .resize(400, 300)
-  .toFile('./img1.png')
-```
-
-
-
-#### 7.2.4、buffer 的内存分配
-
-buffer 的内存分配采用了  slab 机制进行**预先申请、事后分配**。
-
-slab 有三种状态：
-
-- full：完全分配状态（内存占满）
-- partial：部分分配状态（只使用了部分内存）
-- empty：没有被分配状态（内存完全没有被用过）
-
-
-
-事实上我们创建 Buffer 时，并不会频繁的向操作系统申请内存，它会默认先申请一个 8 * 1024 个字节大小的内存，也就是 8kb
-
-> https://github.com/nodejs/node/blob/v14.16.1/lib/buffer.js#L136
-
-```js
-Buffer.poolSize = 8 * 1024;
-let poolSize, poolOffset, allocPool;
-
-// ...
-
-function createPool() {
-  poolSize = Buffer.poolSize;
-  allocPool = createUnsafeBuffer(poolSize).buffer;
-  markAsUntransferable(allocPool);
-  poolOffset = 0;
+async function asyncFun1() {
+  console.log('asyncFun1--start');
+  await asyncFun2();
+  console.log('asyncFun1--end');
 }
-createPool();
-```
 
-在加载 buffer 模块时，直接执行 createPool() 初始化一个 8kb 的内存空间，这也是**为什么说 Buffer 在创建时大小就已经被确定的且无法调整**；另外还声明了变量 **poolOffset** 用来**记录已经被使用的空间**
-
-此时， slab 如下：
-
-![](/imgs/img25.png)
-
-
-
-通过 Buffer.alloc 分配一个 2048 字节的 buffer
-
-```js
-Buffer.alloc(2 * 1024)
-```
-
-那么 slab 会变为：
-
-![](/imgs/img26.png)
-
-具体的分配过程可以查看：
-
-> https://github.com/nodejs/node/blob/v14.16.1/lib/buffer.js#L410
-
-```js
-function allocate(size) {
-  if (size <= 0) {
-    return new FastBuffer();
-  }
-    
-  // 8096 右移 1 为 4096，即要分配的空间小于 4kb
-  if (size < (Buffer.poolSize >>> 1)) {
-    // slab 剩余空间不够分配， 通过 createPool 再申请一块 slab 的内存
-    if (size > (poolSize - poolOffset))
-      createPool();
-      
-    // 够分配那就直接分配，并且通过 poolOffset 记录当前已经使用的空间
-    const b = new FastBuffer(allocPool, poolOffset, size);
-    poolOffset += size;
-    alignPool();
-    return b;
-  }
-    
-  // 要分配的空间大于 4kb，直接去创建新的 slab 内存
-  return createUnsafeBuffer(size);
+async function asyncFun2() {
+  console.log('asyncFun2');
 }
+
+console.log('script--1');
+
+setTimeout(() => {
+  console.log('setTimeout');
+})
+
+asyncFun1();
+
+new Promise((resolve) => {
+  console.log('promise--1');
+  resolve()
+}).then(res => {
+  console.log('promise.then--2');
+})
+
+console.log('script--2');
+```
+
+输出结果：
+
+```js
+// script--1
+// asyncFun1--start
+// asyncFun2
+// promise--1
+// script--2
+// asyncFun1--end
+// promise.then--2
+// setTimeout
 ```
 
 
 
-**buffer 内存分配总结：**
+**例子3：async/await第二种情况：**
 
-- 在初次加载时就会初始化 1 个 8KB 的内存空间 slab
-- 根据申请的内存大小分为`小 Buffer 对象`和`大 Buffer 对象`
-- 小 Buffer （小于 4kb ）情况，判断这个 slab 剩余空间是否足够容纳
-  - 若足够就去使用剩余空间分配，并且记录下已经使用的内存空间
-  - 若不足，执行 createPool 创建一个新的 slab 空间用来分配
-- 大 Buffer 对象（大于 4kb ）情况，直接 createUnsafeBuffer(size) 创建
+```js
+async function asyncFun1() {
+  console.log('asyncFun1--start');
+  await asyncFun2();
+  console.log('asyncFun1--end');
+}
 
-为什么要要判断区别大buffer对象还是小buffer对象？主要是因为不要每次创建小buffer对象时都去向系统申请内存调用。
+async function asyncFun2() {
+  console.log('asyncFun2');
 
-不论是小 Buffer 对象还是大 Buffer 对象，内存分配是在 C++ 层面完成，内存管理在 JavaScript 层面，最终还是可以被 V8 的垃圾回收标记所回收，回收的是 Buffer 对象本身，堆外内存的那些部分只能交给 C++
+  return new Promise((resolve) => {
+    resolve()
+  }).then(res => {
+    console.log('promise.then--1');
+  })
+}
+
+console.log('script--1');
+
+setTimeout(() => {
+  console.log('setTimeout');
+})
+
+asyncFun1();
+
+new Promise((resolve) => {
+  console.log('promise--1');
+  resolve()
+}).then(res => {
+  console.log('promise.then--2');
+})
+
+console.log('script--2');
+```
+
+输出结果：
+
+```js
+// script--1
+// asyncFun1--start
+// asyncFun2
+// promise--1
+// script--2
+// promise.then--1
+// promise.then--2
+// asyncFun1--end
+// setTimeout
+```
 
 
 
-可参考： [Node Buffer 对象的探究与内存分配代码挖掘](https://www.cnblogs.com/everlose/p/13054503.html)
+### 7.4、Node 中的事件循环 Event Loop
+
+浏览器的 Event Loop 是根据 html5 规范来实现的,不同浏览器的实现方式可能有差异。
+
+在 Node 中，由 libuv 实现 eventloop。先来回忆一下 Node 流程图：
+
+![](/imgs/img7.png)
+
+可以发现，libuv 中主要维护了一个 EventLoop 和 worker threads（线程池），在 Node 中真正与操作系统进行沟通的是 libuv；比如说，需要 fs 去打开文件，js 代码经过 v8 引擎解析，通过 Bindings 桥梁告诉 libuv，然后再由 libuv 与操作系统进行沟通
+
+
+
+#### 7.4.1、阻塞与非阻塞 I/O
+
+假设当前程序中需要对一个文件进行操作，那么就需要打开这个文件，而任何程序中的文件操作都需要**调用操作系统的文件系统**，这个文件操作，就可以认为是 I/O 操作（I/O 是 Input/Ouput 的缩写，即输入输出）。
+
+
+
+操作系统为我们提供了阻塞式调用和非阻塞式调用：
+
+- 阻塞式调用（阻塞 I/O）：调用结果返回之前，当前线程处于阻塞态（阻塞态 CPU 是不会分配时间片的），调用线程只有在得到调用结果之后才会继续执行。
+- 非阻塞式调用（非阻塞 I/O）： 调用执行之后，当前线程不会停止执行，只需要每隔一段时间来检查一下有没有结果返回即可。
+
+
+
+就目前而言，更多的是使用非阻塞调用，不需要傻傻等待结果，浪费 CPU 资源。
+
+
+
+**非阻塞 I/O 存在的问题：**
+
+假设读取文件，非阻塞 I/O 并没有一次性读取到结果，这就意味着为了可以知道是否读取到了完整的数据，需要频繁的去确定读取到的数据是否是完整的，就是一个**轮询**的过程。并且开发中我们可能不只是一个文件的读写，可能是多个文件，或者是多个功能：网络的IO、数据库的IO、子进程调用。如果使用**主线程**程频繁的去进行轮询的工作，那么必然会大大降低性能。
+
+基于以上，可以得出结论：结果是必须要拿到的，但是不能让主线程去轮询。
+
+
+
+为了解决这个轮询问题，libuv 提供了一个线程池（Thread Pool）：线程池会负责这些相关的 I/O 操作，并且会通过轮询等方式等待结果。比如上面的读取 I/O 操作，就可以从线程池拿出一个线程来执行，并且在这个线程中轮询等待结果。（一开始，libuv 线程池默认创建 4 个线程，线程池最大线程数是 128）
+
+那么当读取到结果，又是怎么通知 javascript 呢？这时就需要 Event Loop 了。读取到结果，将结果连同之前注册的回调函数一起放进事件循环中的**某一个队列**（事件循环有很多队列，并不止一个）中，事件循环就可以通知 javascript 应用程序执行对应的回调函数（此时，可以回头看一下上面的 Node 流程图）
+
+```js
+// 后面的就是注册的回调函数
+fs.readFile('xxx.txt', 'utf8', (err, data) => {})
+```
+
+
+
+#### 7.4.2、阻塞、非阻塞、同步、异步
+
+**阻塞和非阻塞：**一般是对于**被调用者**来说，比如说在 Node 中，更多的是指**系统调用**，系统提供了阻塞和非阻塞调用两种方式。
+
+**同步和异步：**一般是对于**调用者**来说，在 Node 中，更多是指 javascript 调用：
+
+- 在发起 javacsript 调用之后，不会进行其他任何的操作，只是等待结果，这个过程就称之为同步
+- 发起调用之后，并不会等待结果，继续完成其他的工作，等到有回调时再去执行，这个过程就是异步
+
+
+
+对于 libuv，一般采用**异步非阻塞I/O** 的方式调用。
+
+
+
+#### 7.4.3、线程池
+
+目前的服务器端语言中存在着什么问题？在 Java、php 或 ASP.NET 等服务器端语言中，每一个客户端连接需要创建一个新的线程，而每个线程需要耗费大约 2MB 的内存，也就是说，理论上，具有8GB内存的服务器可以同时连接的最大用户数大约为 4000 个左右，如果需要支持更多用户就需要增加服务器数量。
+
+这样子一个用户创建一个线程肯定是不太合理的，特别是在高并发情况下，一次有上百万个请求进来怎么办？而且创建了那么多线程，在这一系列请求结束后，这些线程是不是又要被销毁，线程创建最直观的开销就是**内存**，这样的频繁创建和销毁对性能的影响显而易见，同时这样的设计并不能撑其瞬时**峰值流量**。
+
+
+
+基于以上问题，线程池应运而生：
+
+对于频繁的线程创建销毁，解决的办法就是线程复用：
+
+- 一个线程被创建之后，即使这一次响应结束了，也不让他被回收，下一次请求来的时候依然让他去处理。
+- 那么怎么保证线程不被回收？Node 中是通过写一个**死循环**来解决，线程一直处于循环中，当有请求来的时候处理请求，当没有的时候就一直等待，等到了再执行处理，处理完再等待，反复横跳，无限循环。
+- 处于死循环中的线程怎么知道啥时候有请求要给他处理？当没有任务的时候，所有线程处于阻塞状态，当任务来的时候，空闲线程去竞争这个任务，取到的线程开始执行，未取到的继续阻塞。
+
+
+
+#### 7.4.4、Event Loop
+
+无论是我们的文件IO、数据库、网络IO、定时器、子进程，在完成对应的操作后，都会将对应的结果和回调函数放到事件循环（任务队列）中，事件循环会不断的从任务队列中取出对应的事件（回调函数）来执行。
+
+
+
+**Node 的宏任务和微任务：**
+
+Node 中事件循环的异步队列任务也分两种：宏任务和微任务
+
+- 宏任务：setTimeout、setInterval、 setImmediate、I/O 操作
+- 微任务：promise.then、process.nextTick
+
+
+
+**Node 的 event loop 六个阶段：**
+
+一次完整的事件循环会分为很多个阶段，先来看看官方文档关于 event loop 的图：
+
+![](/imgs/img31.png)
+
+- timers（定时器）：本阶段执行已经被 `setTimeout()` 和 `setInterval()` 的调度回调函数，简单理解，就是这两个函数的回调函数执行
+- pending callbacks（待定回调）：本阶段执行某些系统操作（比如 TCP 错误类型）的回调函数
+- idle, prepare：仅系统内部使用（这里只需要知道有这两个阶段就行）
+- poll（轮询）：检索新的 I/O 事件，执行与 I/O 相关的回调，其余情况 node 将在适当的时候在此阻塞。这是最复杂的一个阶段，所有的事件循环以及回调处理都在这个阶段执行
+- check（检测）：setImmediate() 回调函数在这里执行
+- close callbacks（关闭的回调函数）：一些关闭的回调函数，如：socket.on('close', ...)
+
+> 注意：这六个阶段并不包含 process.nextTick
+
+
+
+**Node 的 event loop 的三大重要阶段：**
+
+日常开发中的绝大部分异步任务都是在 timers、poll、check 这3个阶段处理的，接下来重点看看这三大阶段：
+
+- timers：timers 阶段会执行 setTimeout 和 setInterval 回调，并且是由 poll 阶段控制的。 **在 Node 中定时器指定的时间也不是准确时间，只能是尽快执行**
+
+- poll：poll 是一个至关重要的阶段，这一阶段中的执行逻辑如下：
+
+  ![](/imgs/img33.png)
+
+  当前已经存在定时器，而且**定时器到时间了**，拿出来执行，eventLoop 将回到 timers 阶段
+
+  如果没有定时器, 会发生以下两件事情:
+
+  - 如果 poll 队列不为空，会遍历回调队列并同步执行，直到队列为空或者达到系统限制
+  - 如果 poll 队列为空：
+    - 如果有 setImmediate 回调需要执行，poll 阶段会停止并且进入到 check 阶段执行回调
+    - 如果没有 setImmediate 回调需要执行，会等待回调被加入到队列中并立即执行回调，这里同样会有个超时时间设置防止一直等待下去,一段时间后自动进入 check 阶段
+
+- check：直接执行 setImmdiate 的回调
+
+
+
+**process.nextTick：**
+
+process.nextTick 其实是独立于 eventLoop 的任务队列，它有一个自己的队列。process.nextTick 的执行时机会因为 Node 版本的不一致有一点差异。
+
+process.nextTick 的执行优先级高于 promise.then
+
+
+
+**Node 版本差异：**
+
+- **timers 阶段：**如下面一段代码：
+
+  ```js
+  setTimeout(()=>{
+    console.log('setTimeout--1')
+    Promise.resolve().then(function() {
+      console.log('promise.then--1')
+    })
+  })
+  
+  setTimeout(()=>{
+    console.log('setTimeout--2')
+    Promise.resolve().then(function() {
+      console.log('promise.then--2')
+    })
+  })
+  ```
+
+  - 在 Node11 及之后的版本，执行一个阶段里的一个宏任务之后会把这个宏任务创建的微任务执行，这就跟浏览器端运行一致，最后的结果为：`setTimeout--1=>promise.then--1=>setTimeout--2=>promise.then--2`
+  - 在 Node10 及更低版本，会先执行完 timers 阶段的宏任务，等到 timers 阶段结束再执行微任务，结果是：`setTimeout--1=>setTimeout--2=>promise.then--1=>promise.then--2`
+
+- **check 阶段：**如下面一段代码
+
+  ```js
+  setImmediate(() => console.log('immediate--1'));
+  setImmediate(() => {
+    console.log('immediate--2');
+    Promise.resolve().then(() => console.log('promise.then'));
+  });
+  setImmediate(() => console.log('immediate--3'));
+  ```
+
+  - 在 Node11 及之后的版本，结果是：`immediate--1=>immediate--2=>promise.then=>immediate--3`
+  - 在 Node10 及更低版本，结果是：`immediate--1=>immediate--2=>immediate--3=>promise.then`
+
+- **process.nextTick：**如下一段代码：
+
+  ```js
+  setImmediate(() => console.log('setImmediate--1'));
+  setImmediate(() => {
+    console.log('setImmediate--2');
+    process.nextTick(() => console.log('nextTick'));
+  });
+  setImmediate(() => console.log('setImmediate--3'));
+  ```
+
+  - 在 Node11 及之后的版本，结果是：`setImmediate--1=>setImmediate--2=>nextTick=>setImmediate--3`
+  - 在 Node10 及更低版本，结果是：`setImmediate--1=>setImmediate--2=>nextTick=>setImmediate--3`
+
+也就是说，在 Node11 及之后的版本，很多特性已经向浏览器看齐了。
+
+
+
+**setTimeout(fn, 0)、setImmediate(fn)执行顺序分析：**
+
+看如下一段代码：
+
+```js
+setTimeout(() => {
+  console.log('setTimeout');
+}, 0);
+
+setImmediate(() => {
+  console.log('setImmediate');
+});
+```
+
+使用 Node 执行的时候，会发现输出顺序是不确定的。为什么呢？在 Node 中，setTimeout 的延时时间如果不传或者传 0 都会被转换为 1ms；而事件循环的初始化是需要时间的，如果初始化时间大于 1ms，那么此时进入到 poll 阶段，那么肯定是存在 setTimeout 定时器并且时间到了，那么会执行 setTimeout ；如果而事件循环的初始化时间小于 1ms，那么此时进入 poll 阶段，没检测到定时器，那么就会去 check 阶段执行 setImmediate。
+
+
+
+再看如果是在 I/O 事件中：
+
+```js
+fs.readFile('./test.txt', 'utf8', (err, data) => {
+  setTimeout(() => {
+    console.log('setTimeout');
+  }, 0);
+
+  setImmediate(() => {
+    console.log('setImmediate');
+  });
+})
+```
+
+那么必然是先输出 setImmediate 再输出 setTimeout。为什么？前面说过，在 Node 中，setTimeout 的延时时间如果不传或者传 0 都会被转换为 1ms；但是此时，事件循环已经被初始化过了，执行完 fs.readFile 之后setTimeout  要 1ms 之后，此时 poll 队列为空，就会去 check 阶段执行 setImmediate
+
+
+
+**大体上 Node 的 Event Loop 的执行流程如下：**
+
+![](/imgs/img34.png)
+
+
+
+**例子分析：**
+
+```js
+const fs = require('fs');
+const { resolve } = require('path');
+
+const filePath = resolve(__dirname, './test.txt')
+
+console.log('start');
+
+setTimeout(() => {
+  console.log('setTimeout--1');
+
+  Promise.resolve().then(()=>{
+    console.log('promise.then--1');
+  });
+
+  process.nextTick(() => {
+    console.log('nextTick--1');
+  })
+});
+
+setTimeout(() => {
+  console.log('setTimeout--2');
+});
+
+setImmediate(() => {
+  console.log('setImmediate--1');
+});
+
+fs.readFile(filePath, 'utf8', (err, data) => {
+  if (err) throw err;
+  console.log('readFile--1');
+
+  process.nextTick(() => {
+    console.log('nextTick--2');
+  });
+});
+
+Promise.resolve().then(()=>{
+  console.log('promise.then--2');
+});
+
+console.log('end');
+```
+
+结果是：
+
+```js
+start
+end
+promise.then--2
+setTimeout--1
+nextTick--1
+promise.then--1
+setTimeout--2
+setImmediate--1
+readFile--1
+nextTick--2
+```
+
+这里可能会问：根据上面的图，不是 poll 执行 I/O 之后再执行 check 的 setImmediate 吗，为什么 setImmediate 会在 fs 操作之前呢？
+
+因为，在 fs 进行文件读取的时候是耗时的，在读取过程中并没有将 fs 的回调放进 poll 队列，那么 poll 为空，就会进入 check 执行 setImmediate；等到 fs 读取完成，将回调放进 poll 队列，再执行 fs 回调。
+
+
+
+#### 7.4.5、线程池 + Event Loop 实现异步非阻塞 I/O
+
+下面来了解 Node 中使用线程池 + Event Loop 实现异步非阻塞 I/O，先来看一张图：
+
+![](/imgs/img30.png)
+
+
+
+基本实现：以 `fs.readFile` 为例：
+
+```js
+fs.readFile('xxx.txt', 'utf8', (err, data) => {})
+```
+
+- **实现非阻塞：**要想实现非阻塞，那么肯定不能由主线程去处理，那么就交由线程池处理，主线程就可以继续做其他的事情。
+- **实现异步：**在线程池 IO 处理结束后，会主动的把结果和之前注册的回调函数放入 eventloop 任务队列中，eventloop 处于不断循环的状态，当循环检查到任务队列里有东西时，就会取出来然后执行。
+
+也就是说，当发起一个 I/O 请求的时候，主线程无需等待这个 I/O 请求的结果返回，而是直接交给线程池去处理，线程池处理完结果后，会将结果及之前注册的回调放入 **eventloop 某一个任务队列**（事件循环有很多队列，并不止一个）中，eventloop 会不断的从任务队列中取出对应的事件（回调函数）来执行。整个 IO 过程**对主线程而言非阻塞**，并且拿到结果后自动执行回调，达到异步非阻塞。
+
+
+
+**问题：Node 需要考虑线程安全的问题吗？**
+
+首先，了解什么是线程安全：例如，在 java 中，对于同一块内存空间，一个线程在读取，一个线程在写入，那么肯定会有问题，这时候就需要考虑线程安全的问题。
+
+而在 Node 中，拿到结果后，将之前注册过的回调函数放进任务队列，eventloop 会不断的从任务队列中取出对应的事件（回调函数），交给 javascript 执行，而 javascript 是单线程的，每次只能执行一件事。所以 Node 中是不会存在线程安全的问题。
+
+但是如果都是异步非阻塞操作，Node 中会存在执行先后顺序不一样的问题，这个取决于线程池对某一 I/O 操作处理的快慢。
+
+
 
