@@ -1929,6 +1929,151 @@ npx webpack --version
 
 
 
+### 6.8、发布自己开发的 npm 包
+
+如果自己开发了一个 npm 包，想要共享出去，供团队或者其他人使用，那么就需要将开发的 npm 包发布到 npm registry 代码仓库上。
+
+下面是发布一个 npm 包的流程。
+
+
+
+#### 6.8.1、注册 npm 账号
+
+要想发布 npm 包，首先得注册一个 npm 账号，用于管理自己发布的包。
+
+npm 官网注册：https://www.npmjs.com/
+
+
+
+#### 6.8.2、在本机登陆 npm
+
+比如，进入到自己 npm 包项目根目录，执行 `npm login`
+
+![](/imgs/img35.png)
+
+输入刚刚注册的 npm 用户名、密码、邮箱地址，就会显示 `Logged in as weidu006 on https://registry.npmjs.org/.` 代表使用 weidu006 这个用户登陆了 `https://registry.npmjs.org/` 这个仓库，真正发布也是发布到 npm 的 registry 仓库上。
+
+
+
+> 注意事项：一定要确保当前使用的 npm 镜像源是 npm，不能是 taobao 之类的镜像源
+
+
+
+#### 6.8.3、修改 package.json
+
+发布一个 npm 包需要关注的 package.json 属性：
+
+- name：npm 包名，别人通过 npm 下载需要输入这个报名，全英文小写，中间可以加 `-` 分割
+
+  - 注意，要想发布，包名必须是唯一的，也就是 npm 上不能存在相同的包名
+
+- version：版本描述，一般遵循 semver 版本规范
+
+- description：包描述，用户在 npm 上进行包搜索的会显示，有利于筛选
+
+- keywords：关键词，在 npm 上可以通过关键词搜索到你的包
+
+- author：包作者，一般格式为 `${your name}${email}`，也可以是 github 地址
+
+- license：开源协议，目前使用的比较多的是 `MIT`
+
+- homePage：包首页，如果在服务器上部署了包或者包的使用文档，可以填写这个
+
+- repository：包源码地址，是一个对象形式：
+
+  ```js
+  "repository": {
+    "type": "git", // 使用什么方式托管，git、svn 等
+    "url": "https://github.com/ggBoy-caigou" // 源码地址
+  }
+  ```
+
+- main：npm 包的入口
+
+
+
+#### 6.3.4、添加描述文档 README.md
+
+一般都会有一个描述文档，来说明当前 npm 包的使用方法
+
+在根目录添加 `README.md` 文件
+
+
+
+#### 6.3.5、支持多平台
+
+如果当前的 npm 包想要支持多平台，比如浏览器、Node 等，那么就需要支持 cjs、es、amd 等引入，还有想代码压缩等，此时就需要使用到一些打包工具，例如常用的 rollup、webpack 等，将打包后的代码发布到 npm 即可。
+
+
+
+#### 6.3.5、发布
+
+执行命令：
+
+```js
+npm publish
+```
+
+出现如下：说明发布成功
+
+![](/imgs/img36.png)
+
+然后，就可以去 npm 上通过报名搜索，可能会有延迟，最好等个几分钟再搜索
+
+![](/imgs/img37.png)
+
+
+
+
+
+#### 6.3.6、更新 npm 包
+
+1. 修改包代码
+2. 更新 package.json 版本号（强烈建议遵循 semver 规范）
+3. 重新发布
+
+
+
+#### 6.3.7、删除 npm 包
+
+执行命令：
+
+```js
+npm unpublish pagename --force
+```
+
+npm 官方认为，撤销发布的包被认为是一种不好的行为，试想一下你撤销了发布的包[假设它已经在社区内有了一定程度的影响]，这对那些已经深度使用并依赖你发布的包的团队是件多么崩溃的事情，所以更加推荐使用 `npm deprecate` 让 npm 包过期
+
+而且，npm 官方 registry 仅支持删除72小时之内发布的包，超过时间需要联系支持邮件
+
+
+
+#### 6.3.8、让发布的 npm 包过期
+
+基本命令：
+
+```js
+ npm deprecate <pkg>[@<version>] <message>
+```
+
+- pkg：包名
+- version：版本
+- message：在任何人尝试安装这个包时的警告信息
+
+
+
+使用这个命令，**并不会在社区里撤销你已有的包，但会在任何人尝试安装这个包的时候得到警告**
+
+
+
+执行命令：
+
+```js
+npm deprecate weidu-npm-test@1.1.0 "当前以不维护"
+```
+
+
+
 ## 7、事件循环Event Loop 与异步 IO
 
 首先，理解事件循环是什么：事件循环可以理解 JavaScript 和浏览器或者 Node 之间的一个桥梁

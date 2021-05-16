@@ -1,0 +1,17 @@
+{
+  "name": "weidu-npm-test",
+  "version": "1.1.0",
+  "description": "一个js工具类集合",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["util", "js"],
+  "author": "weidu",
+  "license": "MIT",
+  "homePage": "https://github.com/ggBoy-caigou",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ggBoy-caigou"
+  }
+}
