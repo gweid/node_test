@@ -893,6 +893,7 @@ if (!fs.existsSync(dir)) {
     }
   })
 }
+```
 
 
 
@@ -920,7 +921,6 @@ if (!fs.existsSync(dir)) {
   
   const dir = resolve(__dirname, './common')
   getFiles(dir)
-```
 
 - 第二种方法：通过 fs.readdir 的 withFileTypes: true 在读取的时候把文件类型一起获取
 
@@ -964,7 +964,7 @@ fs.rename(oldName, newName, err => {
 
 
 
-...... 除了上面的，还有很多常用的 fs api，具体在需要使用到的时候，只需要查询文档即可：https://nodejs.org/dist/latest-v14.x/docs/api/fs.html
+除了上面的，还有很多常用的 fs api，具体在需要使用到的时候，只需要查询文档即可：https://nodejs.org/dist/latest-v14.x/docs/api/fs.html
 
 
 
@@ -1329,6 +1329,197 @@ function allocate(size) {
 
 
 可参考： [Node Buffer 对象的探究与内存分配代码挖掘](https://www.cnblogs.com/everlose/p/13054503.html)
+
+
+
+### 5.5、Stream 模块
+
+Stream 流：说到流，可能第一反应就是流水，源源不断地流动；在 Node 中流的概念也差不多，比如，从一个文件中读取内容时，文件的二进制（字节）数据会源源不断的被读取到，而这个一连串的字节，就是程序中的流。
+
+
+
+因此，流在程序中可以理解为：是连续字节的一种表现形式和抽象概念；流应该是可读的，也是可写的。
+
+
+
+为什么需要流呢？这里以读取文件和写入文件为例：在之前，读取文件使用 `fs.readFile`，写入文件用 `fs.writeFile`；但是这是完全读取和完全写入，就是说只能一次性读取（写入）所有的东西，这有个缺点就是无法控制一些细节的操作，比如从什么位置开始读、读到什么位置、一次性读取多少个字节、读到某个位置后暂停读取某个时刻恢复读取等等，亦或者文件非常大（例如视频），一次性全部读取并不合适。
+
+
+
+#### 5.5.1、基本的 Stream 操作
+
+**Node 中有 4 中基本流操作类型：**
+
+- Readable：从中读取数据的流
+- Writable：写入数据的流
+- Duplex：同时读取和写入的流（一般用于 socket）
+- Transform：在写入和读取数据时修改或转换数据的流
+
+
+
+**下面以文件读写为例子，简述流的基本操作：**
+
+使用 `fs.createReadStream` 创建一个文件读取流，先看看常用参数：
+
+- path：要读取的文件，类型可以是 `<string>|<Buffer>|<URL>`
+
+- options：配置参数，比较常用的是：
+
+  - flags：以什么形式读取，默认是 `r`，仅读取
+
+  - encoding：编码格式
+
+  - start：文件读取开始的位置
+  - end：文件读取结束的位置
+  - highWaterMark：一次性读取字节的长度，默认 64KB
+  - ......
+
+文件读取流的基本使用：
+
+```js
+const fs = require('fs')
+
+// 创建文件读取流
+const readStream = fs.createReadStream('./test.txt', {
+  encoding: 'utf8',
+  highWaterMark: 10
+})
+
+// 监听文件被打开
+readStream.on('open', () => {
+  console.log('文件被打开');
+})
+
+// 监听流的读取
+readStream.on('data', chunk => {
+  console.log(chunk);
+
+  // 暂停读取
+  readStream.pause();
+
+  // 500 毫秒之后恢复读取
+  setTimeout(() => {
+    readStream.resume();
+  }, 500)
+})
+
+// 监听流文件读取结束
+readStream.on('end', () => {
+  console.log('读取结束');
+})
+
+// 读取错误
+readStream.on('error', (err) => {
+  console.log(err);
+})
+
+// 监听流文件关闭
+readStream.on('end', () => {
+  console.log('文件关闭');
+})
+```
+
+为什么可以使用 `.on` 来监听事件呢？因为 **Stream 是继承自 Events 的**，那么就代表 Stream 有播报、监听事件的能力。
+
+
+
+使用 `fs.createWriteStream` 创建写入流，下面来看看基本参数：
+
+- path：要将流写入到哪里
+- options: 配置参数，比较常用的是：
+  - flags：以什么形式写入，默认是 `w`，会覆盖源文件，如果希望在文件末尾追加，可以使用 `a` 或者 `a+`
+  - encoding：编码格式
+  - start：开始写入的位置
+  - ......
+
+文件写入流：
+
+```js
+const fs = require('fs')
+
+const content = 'There are moments in life when you miss someone so much'
+
+// 创建写入流
+const writeStream = fs.createWriteStream('./test1.txt', { flags: 'a+' })
+
+// 写入内容
+writeStream.write(content, err => {
+  if (!err) {
+    console.log('写入成功');
+  }
+})
+
+// 写入流在打开后是不会自动关闭的，需要手动关闭
+// 只有手动调用 writeStream.close 关闭才能监听 close 事件
+writeStream.close()
+
+// 调用  writeStream.close 会发出 finish 事件
+writeStream.on('finish', () => {
+  console.log('文件写入结束');
+})
+
+// 并不能直接监听 close
+writeStream.on('close', () => {
+  console.log('文件关闭');
+})
+```
+
+上面的 `writeStream.write` 写入加 `writeStream.close` 其实可以用一个代替：
+
+```js
+// writeStream.end 代表写入并关闭
+writeStream.end(content, (err) => {
+  if (!err) {
+    console.log('写入成功');
+  }
+})
+```
+
+这里需要注意，写入流打开后是不会自动关闭的，需要手动调用 `.close` 进行关闭或者使用 `.end` 直接写入后关闭
+
+
+
+**流读写操作：**先读取，再写入
+
+```js
+const fs = require('fs')
+
+const readStream = fs.createReadStream('./test.txt', { highWaterMark: 10 })
+const writeStream = fs.createWriteStream('./test1.txt', { flags: 'a+' })
+
+readStream.on('data', chunk => {
+  writeStream.write(chunk, err => {
+    if (!err) {
+      console.log('写入成功');
+    }
+  })
+})
+```
+
+
+
+#### 5.5.2、管道流 pipe
+
+**管道流：**
+
+管道提供了一个输出流到输入流的机制。通常我们用于从一个流中获取数据并将数据传递到另外一个流中
+
+![](/imgs/img38.png)
+
+把文件比作装水的桶，而水就是文件里的内容，我们用一根管子(pipe)连接两个桶使得水从一个桶流入另一个桶，这样就慢慢的实现了文件内容从一个文件到另外一个文件的过程。
+
+```js
+const fs = require('fs')
+
+const readStream = fs.createReadStream('./test.txt')
+const writeStream = fs.createWriteStream('./test1.txt')
+
+readStream.pipe(writeStream)
+
+writeStream.on('close', (err) => {
+  console.log('读写完成');
+})
+```
 
 
 
