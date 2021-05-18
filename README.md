@@ -1,11 +1,27 @@
 # Node.js
 
-Node.js 官网：
+**Node.js 官网：**
 
 -  英文官网： https://nodejs.org/en/
 - 中文官网：http://nodejs.cn/
 
 node技术栈：https://www.nodejs.red/#/README
+
+
+
+**利用 vscode 调试 Node：**
+
+1. 打开需要调试的文件，在需要调试的地方打上断点：
+
+   ![](/imgs/img46.png)
+
+2. 打开 vscode 的 debugger 模式，注意，使用 debugger 模式要求当前被打开的文件不在启动状态
+
+   ![](/imgs/img47.png)
+
+3. 如果看到调试控制台输出如下，代表成功
+
+   ![](/imgs/img48.png)
 
 
 
@@ -2894,6 +2910,10 @@ fs.readFile('xxx.txt', 'utf8', (err, data) => {})
 
 
 ## 8、HTTP
+
+模拟请求可以使用 apifox、postman 等工具
+
+
 
 ### 8.1、web 服务器
 
