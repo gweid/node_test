@@ -2893,3 +2893,534 @@ fs.readFile('xxx.txt', 'utf8', (err, data) => {})
 
 
 
+## 8、HTTP
+
+### 8.1、web 服务器
+
+当客户端需要某一个资源时，可以通过 Http 请求向一台服务器获取到这个资源；提供资源的这个服务器，就是一个 Web 服务器。
+
+![](/imgs/img39.png)
+
+目前，常见的 web 服务器有：IIS、Nginx、Apache、Tomcat、Node.js 等
+
+
+
+### 8.2、Node 启动一个 web 服务器
+
+Node 创建一个 web 服务器主要是依赖于 http 模块：
+
+```js
+const http = require('http')
+
+// 端口号
+const HTTP_PORT = 9000
+// host 地址
+const HTTP_HOST = '0.0.0.0'
+
+// 创建一个服务器
+const server = http.createServer((req, res) => {
+  res.end('server success')
+})
+
+// 启动服务器，指定端口号和主机地址
+server.listen(HTTP_PORT, HTTP_HOST, () => {
+  console.log(`服务器已启动：${HTTP_HOST}:${HTTP_PORT}`)
+})
+```
+
+Node 执行文件，打开 127.0.0.1:9000 会发现输出了 `server success`，这就代表成功启动了一个 web 服务器
+
+![](/imgs/img40.png)
+
+
+
+### 8.3、nodemon 的使用
+
+如果只是使用 node 去执行文件，那么每修改一次文件都需要重新执行一次，太过麻烦，所以一般使用 `nodemon` 工具去监听文件变化，自动重启服务器
+
+全局安装：
+
+```js
+npm i nodemon -g
+```
+
+使用：
+
+```js
+nodemon index.js
+```
+
+
+
+### 8.4、创建服务器的方式
+
+在上面的例子中，创建服务器是通过 `http.createServer` 的方式
+
+其实还可以通过另外一种方式创建：`new http.Server`
+
+```js
+const http = require('http')
+
+const server2 = new http.Server((req, res) => {
+  res.end('new http.Server')
+})
+
+server2.listen(9001, () => {
+  console.log(`服务器已启动：0.0.0.0:9001`);
+})
+```
+
+这两种创建服务器的方式有什么不一样呢？其实本质是完全一样的，下面来看一段 Node 源码:
+
+![](/imgs/img41.png)
+
+可以发现，`createServer` 实际上就是 `new Server` 而已
+
+
+
+### 8.5、主机和端口号
+
+**Server** 通过 listen 方法来开启服务器，并且在某一个主机和端口上监听网络请求
+
+listen 常用的参数是三个：
+
+- port：端口号，可以不传，不传系统会自动分配端口号，但是开发中一般会指定端口号
+
+  - 不传端口号的时候，可以怎么知道系统分配的端口号呢？
+
+    ```js
+    server.listen(() => {
+      const HTTP_PORT = server.address().port
+      console.log(`服务器已启动：0.0.0.0:${HTTP_PORT}`)
+    })
+    ```
+
+- host：主机，一般可以传入：localhost、127.0.0.1、0.0.0.0，不传默认是 0.0.0.0
+
+  - localhost：本质上是一个域名，通常情况下被解析成 127.0.0.1
+  - 127.0.0.1：是一个回环地址，主机自己发出去的包，直接被自己接收
+    - 正常的数据库包经过 `应用层 - 传输层 - 网络层 - 数据链路层 - 物理层`
+    - 而回环地址，在网络层就被直接获取了，并没有经过 `数据链路层 - 物理层`
+    - 所以，在监听 127.0.0.1 的时候，在同一网段下的主机中，通过主机 ip 地址是不能访问的。比如当前主机 ip 地址：`192.168.0.11`，那么通过这个是不能访问的
+  - 0.0.0.0：监听 IPV4 上的所有地址，再根据端口找到不同的应用程序；当监听 0.0.0.0时，在同一个网段下的主机中，通过主机 ip 地址是可以访问的（所以比较常用的是 0.0.0.0，默认就是这个）
+
+  当然，像 localhost 和 127.0.0.1 也可以通过修改电脑 host 文件映射到其他地址
+
+- 回调函数：服务器启动成功时的回调函数
+
+
+
+### 8.6、request 对象
+
+```js
+const server = http.createServer((req, res) => {})
+```
+
+request 对象中封装了所有客户端传给服务端的信息，比如：请求的 url、请求方法 method、请求头 headers 等
+
+```js
+const http = require('http')
+
+const server = http.createServer((req, res) => {
+  console.log(req.url)
+  console.log(req.method)
+  console.log(req.headers)
+
+  res.end('server success')
+})
+
+server.listen(9000, () => {
+  console.log('服务已启动: 0.0.0.0:9000')
+})
+```
+
+当访问 `0.0.0.0:9000` 的时候，控制台会输出：
+
+![](/imgs/img42.png)
+
+- url：服务端根据请求的 url 不同进行不同的处理
+- method：请求方式：get、post、put、patch、delete 等
+- headres：请求头信息：比如客户端信息、接受数据的格式、支持的编码格式、或者 token 等
+- ......
+
+一般比较常用的就是上面三个
+
+
+
+#### 8.6.1、request 对象 url 的处理
+
+根据传入的 url 不同，进行不同的处理
+
+```js
+const http = require('http')
+
+const server = http.createServer((req, res) => {
+  const reqUrl = req.url
+  if (reqUrl === '/login') {
+    res.end('login successs')
+  } else if (['/', '/home'].includes(reqUrl)) {
+    res.end('homePage')
+  } else {
+    res.end('404 not found')
+  }
+})
+
+server.listen(9000, () => {
+  console.log('服务已启动: 0.0.0.0:9000')
+})
+```
+
+
+
+#### 8.6.2、带参数的 url 解析
+
+例如： `http://127.0.0.1:9000/home?id=1257&name=jack`
+
+这种，直接通过 request.url 得到的是： `/home?id=1257&name=jack`，那么就需要使用 Node 的内置模块 url 来解决
+
+```js
+const http = require('http')
+const url = require('url')
+
+const server = http.createServer((req, res) => {
+  const urlRes = url.parse(req.url)
+  console.log(urlRes);
+})
+
+server.listen(9000, () => {
+  console.log('服务已启动: 0.0.0.0:9000')
+})
+```
+
+会输出：
+
+![](/imgs/img43.png)
+
+那么就可以通过 pathname 拿到 url，通过 query 拿到参数
+
+
+
+但是此时拿到的 query 参数是一个字符串，现在肯定是希望这是一个对象形式，那么可以自己封装函数转换为对象形式，可以使用 Node 内置模块 `querystring`，也可以使用第三方库 `qs`
+
+- 使用 Node 内置模块 querystring
+
+  ```js
+  const http = require('http')
+  const url = require('url')
+  const querystring = require('querystring')
+  
+  const server = http.createServer((req, res) => {
+    const { pathname, query } = url.parse(req.url)
+    const queryObj = querystring.parse(query)
+  })
+  ```
+
+- 使用第三方库 qs
+
+  - 安装 qs
+
+    ```js
+    npm i qs
+    ```
+
+  - 使用：
+
+    ```js
+    const http = require('http')
+    const url = require('url')
+    const qs = require('qs')
+    
+    const server = http.createServer((req, res) => {
+      const { pathname, query } = url.parse(req.url)
+      const queryObj = qs.parse(query)
+    })
+    ```
+
+
+
+#### 8.6.3、处理 POST 请求参数
+
+```js
+const http = require('http')
+
+const server = http.createServer((req, res) => {
+  const { method: reqMethod, url: reqUrl } = req
+
+  if (reqUrl === '/login' && reqMethod === 'POST') {
+    let data = ''
+    
+    // 接收参数
+    req.on('data', chunk => {
+      data += chunk
+    })
+
+    req.on('end', () => {
+      // 先将 buffer 转换为字符串，再将字符串转换为对象
+      const body = JSON.parse(data.toString())
+      console.log(body)
+
+      res.end('server success')
+    })
+  }
+})
+```
+
+- 需要 `req.on` 去接收参数
+- 接受到的参数是 `buffer` 形式，使用 `toString()` 转换为 字符串形式，再使用 `JSON.parse` 转换为对象
+
+
+
+#### 8.6.4、Restful 规范
+
+在 Restful 规范（设计风格）中，对于数据的增删改查应该通过不同的请求方式：
+
+- GET：查询数据
+- POST：新增数据
+- PATCH：修改数据
+- DELETE：删除数据
+
+
+
+#### 8.6.5、rqeuest 对象的 headers
+
+基础的 headers 中包含：
+
+```js
+{
+  'user-agent': 'apifox/1.0.0 (https://www.apifox.cn)',
+  'content-type': 'application/json',
+  accept: '*/*',
+  'cache-control': 'no-cache',
+  host: '127.0.0.1:9000',
+  'accept-encoding': 'gzip, deflate, br',
+  connection: 'keep-alive',
+  'content-length': '45'
+}
+```
+
+- user-agent：客户端相关信息
+
+- content-type：当前请求携带数据的类型
+
+  - 常见的媒体格式类型如下：
+    - text/html ： HTML 格式
+    - text/plain ：纯文本格式
+    - text/xml ： XML 格式
+    - image/gif ：gif 图片格式
+    - image/jpeg ：jpg 图片格式
+    - image/png：png 图片格式
+  - 常见的 application 开头的媒体格式类型：
+    - application/xml： XML 数据格式
+    - application/pdf：PDF 格式
+    - application/msword ： Word 文档格式
+    - application/json： JSON 数据格式
+    - application/x-www-form-urlencoded ：以 `name=jack&age=28` 形式传到服务器
+  - 上传文件之时使用的：
+    - multipart/form-data ： 文件上传时，需要使用该格式
+
+- accept：告知服务器，客户端可接受文件的格式类型
+
+- cache-control：缓存相关
+
+- accept-encoding：告知服务器，客户端支持的文件压缩格式，比如 gzip 压缩（效率可达到40%-60%），对应 .gz文件
+
+- connection：值为 keep-alive 表示：
+
+  - 首先 http 是基于 tcp 协议的（http 是应用层协议，tcp 是传输层协议），通常在进行一次请求和响应结束后会立刻中断连接
+  - 在 http1.0中，如果想要继续保持连接：
+    - 浏览器需要在请求头中添加 connection: keep-alive
+    - 服务端需要在响应头中加 connection: keep-alive
+    - 当客户端再次发起请求时，就会使用同一个连接，直接一方中断连接
+  - 在 http1.1 中，默认开启 keep-alive，不同的 Web 服务器会有不同的保持 keep-alive 的时间，Node 中是 5s（服务端一直保持长连接压力是非常大的，特别是有很多客户端与服务端保持长连接）
+
+  使用 keep-alive 的好处是：建立 tcp 连接是要经过三次握手，是非常耗时的，而保持连接，减少 tcp 创建时间
+
+- content-length：文件的大小和长度
+
+
+
+### 8.7、response 对象
+
+Node 服务端想要给客户端返回的东西都封装在 response 对象中。
+
+
+
+#### 8.7.1、响应结果
+
+要想给客户端响应的结果数据，可以通过两种方式：
+
+- res.write：直接输出响应结果，但是并没有关闭流
+- res.end：
+  - 传参数，输出最后数据，并且关闭流，例如： `res.end('success')`
+  - 不传参数，关闭流，例如： `res.end()`
+
+如果输出没有调用 end，客户端将会一直等待结果，所以客户端在发送网络请求时，都会设置超时时间
+
+```js
+const http = require('http')
+
+const server = http.createServer((req, res) => {
+  // 使用 write 输出结果
+//   res.write('write')
+//   res.end()
+
+  res.end('server success')
+})
+
+server.listen(9000, () => {
+  console.log('服务已启动: 0.0.0.0:9000')
+})
+```
+
+
+
+#### 8.7.2、响应状态码
+
+**这里列出一些常用的状态码：**
+
+| 状态码 | 状态描述              | 说明                                                         |
+| ------ | --------------------- | ------------------------------------------------------------ |
+| 200    | OK                    | 客户端请求成功                                               |
+| 301    | Moved Permanently     | 永久重定向                                                   |
+| 302    | Found                 | 临时重定向                                                   |
+| 304    | Not Modified          | 资源缓存                                                     |
+| 400    | Bad Reque             | 客户端请求有语法错误，服务器无法理解                         |
+| 401    | Unauthorized          | 请求未经授权，要求用户的身份认证                             |
+| 403    | Forbidden             | 服务器收到请求，但是拒绝提供服务                             |
+| 404    | Not Found             | 请求的资源不存在                                             |
+| 500    | Internal Server Error | 服务器内部错误，无法完成客户端请求                           |
+| 503    | Service Unavailable   | 当前服务器暂时无法处理客户端请求，一段时间后，服务端可能恢复正常 |
+
+更多的状态码，可以参考：https://www.runoob.com/http/http-status-codes.html
+
+
+
+**Node 中设置状态码的两种方式：**
+
+- 通过 `res.statusCode`
+
+  ```js
+  const server = http.createServer((req, res) => {
+    res.statusCode = 400
+    res.end('server success')
+  })
+  ```
+
+- 通过 `res.writeHead`
+
+  ```js
+  const server = http.createServer((req, res) => {
+    res.writeHead(400)
+    res.end('server success')
+  })
+  ```
+
+  
+
+#### 8.7.3、响应头文件
+
+设置响应头文件的方式也有两种：
+
+- res.setHeader：一次只能设置一个 header 信息
+
+  ```js
+  const server = http.createServer((req, res) => {
+    res.setHeader('content-type', 'application/json;charset=utf8')
+  
+    res.end('server')
+  })
+  ```
+
+- res.writeHead：同时写入 header 和 status，并且一次可以设置多个 header 信息
+
+  ```js
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, {
+      'content-type': 'application/json;charset=utf8'
+    })
+    res.end('server')
+  })
+  ```
+
+
+
+设置 content-type 的作用：可以让客户端会按照 content-type 方式对返回字符串进行处理，例如：
+
+- 设置 content-type 为 application/json
+
+  ![](/imgs/img45.png)
+
+- 设置 content-type 为 text/html
+
+![](/imgs/img44.png)
+
+很明显，设置 content-type 为 text/html 被浏览器当做标签解析了。服务端渲染就可以设置这个
+
+
+
+### 8.8、Node 利用 http 发送网络请求
+
+Node.js 既可以开发 web 服务器，可以了发送网络请求，这两种能力都由 http 模块提供。
+
+这也是为什么 Node 可以作为中间层代理的原因之一。
+
+还有为什么 axios 即可以在浏览器中使用，也可以在 Node 中使用：
+
+- axios 在浏览器中是用 xhr 发起请求
+- 在 Node 中是利用 http 模块发起请求
+
+
+
+接下来看看 http 模块发送请求的能力：
+
+首先，有一个 Node 服务器：
+
+```js
+const http = require('http')
+
+const server = http.createServer((req, res) => {
+  res.end('server success')
+})
+
+server.listen(9000, () => {
+  console.log('服务已启动: 0.0.0.0:9000')
+})
+```
+
+然后是利用 http 模块发起请求：
+
+- get 请求：
+
+  ```js
+  const http = require('http')
+  
+  // 发起 get 请求
+  http.get('http://localhost:9000', res => {
+    res.on('data', chunk => {
+      console.log(chunk.toString())
+    })
+  })
+  ```
+
+- 其它请求：
+
+  ```js
+  const http = require('http')
+  
+  // 发起请求（注意，http 发起所有请求都可以通过 http.request）
+  const request = http.request({
+    method: 'POST',
+    hostname: 'localhost',
+    port: 9000
+  }, res => {
+    res.on('data', chunk => {
+      console.log(chunk.toString())
+    })
+  })
+  
+  // 必须要 end，代表请求相关配置已准备好，可以发送请求
+  request.end()
+  ```
+
+
+
