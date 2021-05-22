@@ -1,3 +1,11 @@
+Node 相关知识点汇总：<a href='#Node.js'>Node.js</a>
+
+Express 相关知识点汇总：<a href='#Express 框架'>Express 框架</a>
+
+Koa 相关知识点汇总：<a href='#Koa 框架'>Koa 框架</a>
+
+
+
 # Node.js
 
 **Node.js 官网：**
@@ -3441,6 +3449,679 @@ server.listen(9000, () => {
   // 必须要 end，代表请求相关配置已准备好，可以发送请求
   request.end()
   ```
+
+
+
+
+
+# Express 框架
+
+在 Node 中，可以基于 Express 框架快速、方便的开发自己的 Web 服务器，并且可以通过一些实用工具和中间件来扩展自己功能。
+
+**Express 官网：**
+
+- 中文官网：http://expressjs.com/zh-cn/
+
+- 英文官网：https://expressjs.com/
+
+
+
+## 1、安装 express
+
+安装 express 一般有两种方法：
+
+- 通过 npm 安装 express
+- 通过 express 脚手架直接创建一个应用骨架
+
+
+
+### 1.1、npm 安装
+
+1. 初始化一个 npm 环境
+
+   ```js
+   npm init
+   ```
+
+2. 安装 express
+
+   ```js
+   npm i express
+   ```
+
+
+
+### 1.2、 express 脚手架创建一个应用骨架
+
+1. 全局安装 express 脚手架
+
+   ```js
+   npm i -g express-generator
+   ```
+
+2. 通过脚手架创建项目
+
+   ```js
+   express myApp
+   ```
+
+3. 安装依赖
+
+   ```js
+   cd myApp
+   
+   npm i
+   ```
+
+4. 启动项目
+
+   ```js
+   npm run start
+   ```
+
+
+
+## 2、Express 的简单使用
+
+利用 express 开启服务器：
+
+```js
+const express = require('express')
+
+const app = express()
+
+app.get('/info', (req, res, next) => {
+  res.end('success')
+})
+
+app.post('/login', (req, res, next) => {
+  res.end('success')
+})
+
+app.listen(9000, () => {
+  console.log('服务器开启: 0.0.0.0:9000');
+})
+```
+
+
+
+## 3、中间件
+
+Express是一个基于路由和中间件的 Web 框架，它本身的功能非常少，本质上是一系列中间件函数的调用。
+
+
+
+### 3.1、中间件基本认知
+
+**中间件是什么：**
+
+- 中间件的本质是传递给 express 的一个回调函数
+- 这个回调函数接受三个参数：
+  - request：请求对象
+  - response：响应对象
+  - next 函数：用于执行下一个中间件的函数
+
+
+
+**中间件可以做什么：**
+
+- 执行任意代码
+
+- 更改请求对象（request）和响应对象（response）
+
+- 结束请求-响应周期（返回数据）
+
+  - 一般情况下，结束请求需要手动调用一下 res.end，这个结束操作也可以放到中间件中做
+
+- 调用栈中的下一个中间件
+
+  - 在 express 中，所有的中间件都是存放在 stack 栈中的，执行 next() 就是从这个 stack 栈中拿出下一个中间件执行
+
+    ![](/imgs/img49.png)
+
+注意： 如果当前中间件没有结束请求-响应周期，则必须调用 next() 将控制权传递给下一个中间件功能，否则，请求将被挂起，例如，一个 post 请求：
+
+```js
+app.post('/login', (req, res, next) => {
+  
+})
+```
+
+如果没有执行 res.end 结束结束请求-响应周期，并且没有调用 next()，那么请求就会被挂起。
+
+
+
+### 3.2、编写中间件
+
+
+
+#### 3.2.1、使用中间件的方式
+
+- 应用层中间件：使用 `app.use()` 和 `app.METHOD()` 函数将应用层中间件绑定到 express 的实例上，其中 `METHOD` 是中间件函数处理的请求的小写 HTTP 方法（例如 GET、PUT 或 POST）。
+
+  ```js
+  const app = express()
+  
+  app.use((req, res, next) => {})
+  
+  app.get('', (req, res, next) => {})
+  ```
+
+- 路由层中间件：路由器层中间件的工作方式与应用层中间件基本相同，差异之处在于它绑定到 `express.Router()` 的实例
+
+  ```js
+  const router = express.Router()
+  
+  router.use((req, res, next) => {})
+  
+  router.get('', (req, res, next) => {})
+  ```
+
+  
+
+#### 3.2.2、编写一个最简单的中间件
+
+```js
+const express = require('express')
+
+const app = express()
+
+// 编写一个中间件
+const myMiddleFun = (req, res, next) => {
+  console.log('编写简单中间件')
+  res.end('middle ware')
+}
+
+// 使用 app.use 注册中间件
+app.use(myMiddleFun)
+
+app.listen(9000, () => {
+  console.log('服务器启动: 0.0.0.0:9000')
+})
+```
+
+这就注册了一个中间件，本质是一个回调函数。这个中间件在注册的时候没有加任何条件，那么所有的请求都会执行这个中间件。要想加条件：
+
+- 通过 app.use 第一个参数
+
+  ```js
+  app.use('/login', myMiddleFun)
+  ```
+
+  只有访问 `/login` 这个路径才响应 myMiddleFun 中间件，这个也叫路径中间件
+
+- 通过 app.METHOD 注册这个中间件
+
+  ```js
+  app.get('/info', myMiddleFun)
+  ```
+
+  只有是 get 请求，并且访问 `/info` 这个路径才响应 myMiddleFun 中间件，这个也叫方法中间件
+
+
+
+#### 3.2.3、多个中间件问题
+
+```js
+const express = require('express')
+
+const app = express()
+
+// 中间件1
+const myMiddleFun1 = (req, res, next) => {
+  console.log('中间件--1')
+  res.end('middle ware 1')
+}
+
+// 中间件2
+const myMiddleFun2 = (req, res, next) => {
+  console.log('中间件--2')
+  res.end('middle ware 2')
+}
+
+
+// 使用 app.use 注册中间件
+app.use(myMiddleFun1)
+app.use(myMiddleFun2)
+
+app.listen(9000, () => {
+  console.log('服务器启动: 0.0.0.0:9000')
+})
+```
+
+多个中间件的情况下，会执行哪个呢？答案是默认执行第一个，执行完就结束，不会执行第二个中间件。
+
+要想继续执行第二个中间件，需要在第一个中间件中调用 next()。
+
+**中间件在不使用 next() 的情况下，永远只匹配第一个符合要求的。**
+
+```js
+// 中间件1
+const myMiddleFun1 = (req, res, next) => {
+  console.log('中间件--1')
+  next()
+}
+
+// 中间件2
+const myMiddleFun2 = (req, res, next) => {
+  console.log('中间件--2')
+  res.end('middle ware')
+}
+```
+
+这里需要注意的是 res.end 的使用，多个中间件处理同一个问题，res.end 最好放在最后，并且这几个中间件**只能有一个 res.end**。
+
+
+
+#### 3.2.4、连续注册中间件
+
+```js
+app.use((req, res, next) => {
+  console.log('middle--1')
+  next()
+}, (req, res, next) => {
+  console.log('middle--2')
+  next()
+}, (req, res, next) => {
+  console.log('middle--3')
+  res.end('连续注册中间件')
+})
+```
+
+跟上面的一样，也是需要 next() 才会执行下一个中间件，res.end 只能有一个
+
+
+
+#### 3.2.5、编写一个中间件解析请求的 body 参数
+
+```js
+const parseBody = (req, res, next) => {
+  if (req.headers['content-type'] === 'application/json') {
+    let data = ''
+    req.on('data', chunk => {
+      data += chunk
+    })
+
+    req.on('end', () => {
+      req.body = JSON.parse(data)
+      next()
+    })
+  } else {
+    next()
+  }
+}
+
+app.use(parseBody)
+
+app.post('/login', (req, res) => {
+  console.log(req.body)
+  res.end('success')
+})
+```
+
+注意，这里必须在 req.on('end') 后执行 next()，不然后面通过 req.body 会获取不到
+
+
+
+### 3.3、内置中间件及第三方中间件
+
+express 本身有内置的中间件，也有很多三方中间件，所以日常开发大多数情况下不需要手动写中间件
+
+
+
+#### 3.3.1、内置中间件
+
+使用内置中间件解析 body：
+
+```js
+app.use(express.json()) // 解析 json
+
+// extended，为 true 代表使用第三方库 qs 解析，为 false 代表使用 Node 内置的 queryString 解析
+app.use(express.urlencoded({ extended: true })) // 解析 x-www-form-urlencoded
+
+
+app.post('/login', (req, res) => {
+
+ console.log(req.body)
+
+ res.end('success')
+
+})
+
+
+```
+
+这个功能其实就是第三方中间件 body-parser 的功能，只是 express4.16 将其集成进了 express 中
+
+
+
+#### 3.3.2、第三方中间件 multer 处理 form-data
+
+一些常用三方中间件： https://www.expressjs.com.cn/resources/middleware.html
+
+
+
+这里以使用 multer 中间件解析 form-data 格式为例：
+
+> 无论是内置的 express 中间件还是 body-parse 中间件，都没办法解析 form-data 数据，解析 form-data 数据需要使用 multer
+
+
+
+**安装 multer**
+
+```js
+npm i multer
+```
+
+
+
+**解析 form-data 非文件类型数据**
+
+![](/imgs/img53.png)
+
+```js
+const multer = require('multer')
+
+const upload = multer()
+
+// 不要在全局使用，只在当前路由使用，因为全局使用可能会导致用户在其他接口进行上传操作
+// app.use(upload.any()) // 用于解析 form-data 非文件类型
+
+app.post('/formdata', upload.any(), (req, res) => {
+  console.log(req.body)
+  res.end('success')
+})
+```
+
+
+
+
+
+**解析 form-data 文件类型数据**
+
+```js
+const multer = require('multer')
+
+const upload = multer({
+  dest: './imgs/' // 文件上传的之后要存储的路径
+})
+
+// upload.single 代表上传的是单张图片，图片是放在 键名为 file 上
+// 如果要上传多张，使用 upload.array('files')
+app.post('/upload', upload.single('file'), (req, res) => {
+  res.end('上传成功')
+})
+```
+
+- 首先，在 执行 multer 函数的时候传入要保存的位置 dest
+
+- 使用 upload.single 代表单张上传，file 是图片上传时在键名 file 上
+
+  ![](/imgs/img50.png)
+
+- 使用 upload.array() 代表多张上传
+
+但是执行上面的代码，会发现保存的文件没有后缀名
+
+![](/imgs/img51.png)
+
+
+
+此时需要进一步处理：
+
+```js
+const path = require('path')
+const multer = require('multer')
+
+const storage = multer.diskStorage({
+  destination: './imgs/', // 图片存储的位置
+  filename: (req, file, cb) => {
+    // callback 的第一位参数代表的错误信息
+    // file.originalname 代表上传文件的原始文件名，使用 path.extname 获取后缀
+    cb(null, Date.now() + path.extname(file.originalname))
+  }
+})
+
+const upload = multer({
+  // dest: './imgs/' // 文件上传的之后要存储的路径
+  storage // 自定义文件信息
+})
+
+// upload.single 代表上传的是单张图片，图片是放在 键名为 file 上
+// 如果要上传多张，使用 upload.array('files')
+app.post('/upload', upload.single('file'), (req, res) => {
+  res.end('上传成功')
+})
+```
+
+
+
+如果想要获取处理后的信息，可以使用 **req.file 或者 req.files**，这取决于是上传单张还是多张，或者前面使用了 upload.any() 中间件，也是使用 req.files
+
+```js
+app.post('/upload', upload.single('file'), (req, res) => {
+  console.log(req.file)
+  res.end('上传成功')
+})
+```
+
+![](/imgs/img52.png)
+
+
+
+#### 3.3.3、第三方中间件 morgan 处理请求日志
+
+```js
+const fs = require('fs')
+const morgan = require('morgan')
+
+const loggerStream = fs.createWriteStream('./logs/logger.log', { flags: 'a+' })
+
+// combined 是写入日志的格式，一般使用这个
+// 还需要指定一个写入流
+app.use(morgan('combined', { stream: loggerStream }))
+
+app.post('/login', (req, res) => {
+  res.end('success')
+})
+```
+
+
+
+## 4、Express 处理客户端传递的参数
+
+基本上，客户端传递参数的方式有：
+
+- 处理 url 中的参数
+
+  - get 的 query 参数：类似 `http://127.0.0.1:9000/info?id=20564`
+
+    在 express 中获取 query 参数很简单，直接通过 req.query 即可，不需要使用任何中间件
+
+    ```js
+    app.get('/info', (req, res) => {
+      console.log(req.query)
+      res.end('success')
+    })
+    ```
+
+  - get 的 params 参数：类似 `http://127.0.0.1:9000/info/12354`
+
+    在 express 中获取 params 参数也很简单，直接通过 req.params 即可，不需要使用任何中间件
+
+    ```js
+    app.get('/info/:id', (req, res) => {
+      console.log(req.params)
+      res.end('success')
+    })
+    ```
+
+- 处理 body 中的参数
+
+  - json 格式：使用 express 内置中间件 express.json 或者第三方中间件 body-parse
+  - x-www-form-urlencoded格式：使用 express 内置中间件 express.urlencoded 或者第三方中间件 body-parse
+  - form-data格式：使用第三方中间件 multer
+
+
+
+## 5、Express 响应数据
+
+express 响应数据的方式有很多，具体可以查看：https://www.expressjs.com.cn/4x/api.html#res
+
+
+
+下面来看看几个常用的：
+
+- res.end：类似 Node 中的 http 的 res.end，只能返回 string、buffer 类型
+
+  ```js
+  app.post('/login', (req, res) => {
+    res.end('success')
+  })
+  ```
+
+- res.json：可以返回 json 格式数据
+
+  ```js
+  app.post('/login', (req, res) => {
+    res.json({
+      code: 0,
+      message: 'ok'
+    })
+  })
+  ```
+
+- res.send：可以返回 buffer、字符串、对象、布尔值或数组
+
+  ```js
+  app.post('/login', (req, res) => {
+    res.send({
+      code: 0,
+      message: 'ok'
+    })
+  })
+  ```
+
+- res.status：设置响应状态码
+
+  ```js
+  app.post('/login', (req, res) => {
+    res.status(200)
+    res.send({
+      code: 0,
+      message: 'ok'
+    })
+  })
+  ```
+
+- res.set：设置响应头
+
+  ```js
+  app.post('/login', (req, res) => {
+    res.set({
+      'content-type': 'application/json'
+    })
+    res.send({
+      code: 0,
+      message: 'ok'
+    })
+  })
+  ```
+
+
+
+## 6、Express 路由
+
+在上面的例子中，其实都是把代码逻辑都写在 app 中，随着项目的复杂度越来越高，app 将变得非常复杂。
+
+此时，就可以使用 express.Router 创建一个个路由来分开处理不同的逻辑，比如登陆、用户信息等
+
+一个 Router 实例拥有完整的中间件和路由系统，因此它也被称为迷你应用程序（mini-app）
+
+```
+express-test
+├── routers
+│   └── users.js
+└── index.js
+```
+
+> routers/users.js
+
+```js
+const express = require('express')
+
+const userRouter = express.Router()
+
+userRouter.get('/info', (req, res) => {
+  res.send({
+    code: 0,
+    data: {
+      infoList: [
+        {
+          id: '001',
+          price: 10.00
+        },
+        {
+          id: '002',
+          price: 8.99
+        }
+      ]
+    },
+    message: 'ok'
+  })
+})
+
+userRouter.post('info/:id', (req, res) => {
+  res.send({
+    code: 0,
+    message: '修改成功'
+  })
+})
+
+module.exports = userRouter
+```
+
+routers/users.js 中负责写关于 user 模块的逻辑
+
+
+
+> index.js
+
+```js
+const express = require('express')
+
+const userRouter = require('./routers/users')
+
+const app = express()
+
+app.use('/', userRouter)
+
+app.listen(9000, () => {
+  console.log('服务器已开启: 0.0.0.0:9000')
+})
+```
+
+index 中通过 app.use 使用相关路由即可
+
+
+
+## 7、Express 静态资源服务器
+
+Node 其实也可以作为静态资源服务器使用，而 express 提供了非常方便部署静态资源的方法
+
+```js
+const express = require('express')
+
+const app = express()
+
+app.use(express.static('./statics'))
+
+app.listen(9000, () => {
+  console.log('服务器已开启: 0.0.0.0:9000')
+})
+```
+
+只需要 app.use(express.static('./statics'))，指定要作为静态资源的目录即可
 
 
 
