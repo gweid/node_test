@@ -4123,3 +4123,7 @@ app.listen(9000, () => {
 
 
 
+## 8、Express 源码阅读
+
+Express 源码阅读放在另外一个地方，具体查看：https://github.com/gweid/express-source-code
+

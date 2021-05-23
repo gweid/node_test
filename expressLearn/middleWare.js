@@ -3,21 +3,21 @@ const express = require('express')
 const app = express()
 
 //---------------------------------中间件
-// // 中间件1
-// const myMiddleFun1 = (req, res, next) => {
-//   console.log('中间件--1')
-//   next()
-// }
+// 中间件1
+const myMiddleFun1 = (req, res, next) => {
+  console.log('中间件--1')
+  next()
+}
 
-// // 中间件2
-// const myMiddleFun2 = (req, res, next) => {
-//   console.log('中间件--2')
-//   res.end('middle ware')
-// }
+// 中间件2
+const myMiddleFun2 = (req, res, next) => {
+  console.log('中间件--2')
+  res.end('middle ware')
+}
 
-// // 使用 app.use 注册中间件
-// app.use(myMiddleFun1)
-// app.use(myMiddleFun2)
+// 使用 app.use 注册中间件
+app.use(myMiddleFun1)
+app.use(myMiddleFun2)
 
 
 // -------------------------------路径中间件
@@ -127,18 +127,18 @@ const app = express()
 
 
 // --------------------------------- 三方中间件 morgan 处理日志
-const fs = require('fs')
-const morgan = require('morgan')
+// const fs = require('fs')
+// const morgan = require('morgan')
 
-const loggerStream = fs.createWriteStream('./logs/logger.log', { flags: 'a+' })
+// const loggerStream = fs.createWriteStream('./logs/logger.log', { flags: 'a+' })
 
-// combined 是写入日志的格式，一般使用这个
-// 还需要指定一个写入流
-app.use(morgan('combined', { stream: loggerStream }))
+// // combined 是写入日志的格式，一般使用这个
+// // 还需要指定一个写入流
+// app.use(morgan('combined', { stream: loggerStream }))
 
-app.post('/login', (req, res) => {
-  res.end('success')
-})
+// app.post('/login', (req, res) => {
+//   res.end('success')
+// })
 
 app.listen(9000, () => {
   console.log('服务器启动: 0.0.0.0:9000')
