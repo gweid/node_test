@@ -24,6 +24,3 @@
 // var name = 'gweid'
 // console.log(name) // gweid
 // console.log(global.name) // undefined，说明 var 声明的变量没有被挂到 global 上
-
-
-
