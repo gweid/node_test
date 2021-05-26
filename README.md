@@ -1,6 +1,12 @@
-Node 知识点：[Node](#node)
+> 学习 Node、Express、Koa 的一些随笔记录
 
-Express 知识点：[Express](#express)
+Node 知识点汇总：[Node](#node)
+
+Express 知识点汇总：[Express](#express)
+
+Koa 知识点汇总：[Koa](#koa)
+
+
 
 
 
@@ -3454,13 +3460,17 @@ server.listen(9000, () => {
 
 # Express
 
+> 基于 Express 4.17.1
+
+
+
 在 Node 中，可以基于 Express 框架快速、方便的开发自己的 Web 服务器，并且可以通过一些实用工具和中间件来扩展自己功能。
 
 **Express 官网：**
 
-- 中文官网：http://expressjs.com/zh-cn/
-
 - 英文官网：https://expressjs.com/
+- 中文官网：https://www.expressjs.com.cn/
+- 翻译文档：http://expressjs.com/zh-cn/
 
 
 
@@ -4127,3 +4137,516 @@ app.listen(9000, () => {
 
 Express 源码阅读放在另外一个地方，具体查看：https://github.com/gweid/express-source-code
 
+
+
+
+
+# Koa
+
+> 基于 koa2
+
+
+
+Node 中另外一个非常流行的框架是 Koa。
+
+事实上，koa 是 express 同一个团队开发的一个新的**基于 Node 的 Web 框架**，旨在为 Web 应用程序和 API 提供**更小、更丰富和更强大**的能力；使用 koa 编写 web 应用，通过组合不同的 generator，可以**免除重复繁琐的回调函数嵌套**，并极大地提升错误处理的效率，相对于 Express 具有**更强的异步处理能力**；koa **不在内核方法中绑定任何中间件**，其核心代码只有 1600+ 行，是一个**更加轻量级**的框架。
+
+
+
+**Koa 官方网站：**
+
+- 英文官网：https://koajs.com/
+- 中文官网：https://www.koajs.com.cn/
+
+
+
+## 1、安装 Koa
+
+安装 Koa 需要 Node v7.6.0 或更高版本来支持 ES2015、异步方法，而在 Node < 7.6 的版本中使用 `async` 函数, 需要借助 babel 的能力
+
+```js
+npm i koa
+```
+
+
+
+## 2、Koa 简单使用
+
+
+
+### 2.1、快速启动一个服务器
+
+```js
+const Koa = require('koa')
+
+const app = new Koa()
+
+app.listen(9000, () => {
+  console.log('服务器已启动: 0.0.0.0:9000')
+})
+```
+
+- koa 导出的是一个类，所以在导入的时候最好使用 `Koa` 首字母大写的形式命名
+- 既然是一个类，那么就需要通过 new 来得到 app 实例
+- app.listen 开启服务
+
+
+
+### 2.2、简单使用中间件
+
+```js
+const Koa = require('koa')
+
+const app = new Koa()
+
+const middleWare = (ctx, next) => {
+  ctx.response.body = 'success'
+}
+
+app.use(middleWare)
+
+app.listen(9000, () => {
+  console.log('服务器已启动: 0.0.0.0:9000')
+})
+```
+
+中间件提供两个参数：
+
+- ctx（content上下文）：
+  - koa 并没有像 express一样，将 req 和 res 分开，而是将它们作为 ctx 的属性
+  - ctx 代表依次请求的上下文对象
+  - ctx.request：获取请求对象；ctx.response：获取响应对象
+- next：类似 express 的 next，调用 next 取出下一个中间件执行
+
+通过 ctx.response.body 进行响应，ctx.response 上并没有 end，使用 ctx.response.end 会报错；ctx.response.body 可以是：buffer、string、object、array 等
+
+
+
+## 3、Koa 中间件
+
+
+
+### 3.1、匹配路径 path 和请求 method
+
+在 Koa 中，并没有像 Express 一样，提供 method 的方式来注册中间件，也没有提供 path 参数来匹配路径，也就是说不支持：
+
+```js
+app.get('/info', (ctx, next) => {})
+
+app.use('/info', (ctx, next) => {})
+```
+
+还有，在 Koa 中也没有提供类似 Express 一样的连续注册中间件的方法，也就是说 Koa 也不支持：
+
+```
+app.use((ctx, next) => {}, (ctx, next) => {}, ...)
+```
+
+
+
+要想匹配路径 path 和请求 method，在 Koa 中有两种方法：
+
+- 根据 request 手动判断
+- 使用第三方路由中间件 `koa-router`
+
+
+
+#### 3.1.1、手动匹配路径 path 和请求 method
+
+```js
+const getMiddle = (ctx, next) => {
+  const { method: reqMethod, path: reqPath } = ctx.request
+
+  if (reqMethod === 'GET' && reqPath === '/info') {
+    ctx.response.body = 'hello, koa'
+  }
+}
+
+app.use(getMiddle)
+```
+
+
+
+#### 3.1.2、koa-router 的使用
+
+koa 官方并没有提供路由的功能，这里选择第三方中间件库：koa-router
+
+**安装： **
+
+```js
+npm i koa-router
+```
+
+**使用：**
+
+> routers/user.js
+
+```js
+const KoaRouter = require('koa-router')
+
+// prefix 是给所有的路由加上 /api 的前缀
+// 例如下面 /info，实际上接口路径是 /api/info
+const userRouter = new KoaRouter({ prefix: '/api' })
+
+userRouter.get('/info', (ctx, next) => {
+  ctx.response.body = {
+    code: 0,
+    message: 'get success'
+  }
+})
+
+userRouter.post('/info', (ctx, next) => {
+  ctx.response.body = {
+    code: 0,
+    message: 'post success'
+  }
+})
+
+module.exports = userRouter
+```
+
+> index.js
+
+```js
+const Koa = require('koa')
+
+const userRouter = require('./routers/users')
+
+const app = new Koa()
+
+// userRouter.routes() 会返回一个中间件函数
+app.use(userRouter.routes())
+// 可以为没有实现的方法自动报错，例如现在只实现了 get、post 请求
+// 如果发起的 put 请求，那么会报错：Method Not Allowed，并且返回 405 状态码
+app.use(userRouter.allowedMethods())
+
+app.listen(9000, () => {
+  console.log('服务器已启动: 0.0.0.0:9000')
+})
+```
+
+
+
+## 4、Koa 的一些简写方式
+
+以下访问器和别名与 ctx.request.xxx 一致：
+
+- `ctx.header`
+- `ctx.headers`
+- `ctx.method`
+- `ctx.method=`
+- `ctx.url`
+- `ctx.url=`
+- `ctx.originalUrl`
+- `ctx.origin`
+- `ctx.href`
+- `ctx.path`
+- `ctx.path=`
+- `ctx.query`
+- `ctx.query=`
+- `ctx.querystring`
+- `ctx.querystring=`
+- `ctx.host`
+- `ctx.hostname`
+- `ctx.fresh`
+- `ctx.stale`
+- `ctx.socket`
+- `ctx.protocol`
+- `ctx.secure`
+- `ctx.ip`
+- `ctx.ips`
+- `ctx.subdomains`
+- `ctx.is()`
+- `ctx.accepts()`
+- `ctx.acceptsEncodings()`
+- `ctx.acceptsCharsets()`
+- `ctx.acceptsLanguages()`
+- `ctx.get()`
+
+
+
+以下访问器和别名与 ctx.response.xxx 一致：
+
+- `ctx.body`
+- `ctx.body=`
+- `ctx.status`
+- `ctx.status=`
+- `ctx.message`
+- `ctx.message=`
+- `ctx.length=`
+- `ctx.length`
+- `ctx.type=`
+- `ctx.type`
+- `ctx.headerSent`
+- `ctx.redirect()`
+- `ctx.attachment()`
+- `ctx.set()`
+- `ctx.append()`
+- `ctx.remove()`
+- `ctx.lastModified=`
+- `ctx.etag=`
+
+
+
+为什么可以这样子写呢？主要是 Koa 内部对这些方法进行了代理，例如 ctx.body 实际上访问的是 ctx.response.body
+
+
+
+## 5、Koa 参数解析
+
+
+
+### 5.1、解析 query、params
+
+#### 5.1.1、query
+
+```js
+const Koa = require('koa')
+const KoaRouter = require('koa-router')
+
+const app = new Koa()
+
+const userRouter = new KoaRouter({ prefix: '/api' })
+
+userRouter.get('/info/:id', (ctx, next) => {
+  console.log(ctx.query) // 解析 query
+
+  ctx.body = {
+    code: 0,
+    message: 'success'
+  }
+})
+
+app.use(userRouter.routes())
+
+app.listen(9000, () => {
+  console.log('服务器已启动: 0.0.0.0:9000');
+})
+```
+
+
+
+#### 5.1.2、params
+
+```js
+const Koa = require('koa')
+const KoaRouter = require('koa-router')
+
+const app = new Koa()
+
+const userRouter = new KoaRouter({ prefix: '/api' })
+
+userRouter.get('/info/:id', (ctx, next) => {
+  console.log(ctx.params) // 解析 params
+
+  ctx.body = {
+    code: 0,
+    message: 'success'
+  }
+})
+
+app.use(userRouter.routes())
+
+app.listen(9000, () => {
+  console.log('服务器已启动: 0.0.0.0:9000');
+})
+```
+
+注意：这里的 ctx.params 是 koa-router 本身提供的，Koa 并没有提供
+
+
+
+### 5.2、解析 body 参数
+
+
+
+#### 5.2.1、json 格式
+
+需要借助第三方中间件包： koa-bodyparser
+
+安装：
+
+```js
+npm i koa-bodyparser
+```
+
+使用：
+
+```js
+const Koa = require('koa')
+const KoaRouter = require('koa-router')
+const koaBodyParse = require('koa-bodyparser')
+
+const app = new Koa()
+
+app.use(koaBodyParse())
+
+const userRouter = new KoaRouter({ prefix: '/api' })
+
+userRouter.post('/info', (ctx, next) => {
+  // 有 koa-bodyparse 中间件提供的功能
+  // 注意：这里不能简写 ctx.body，与 koa 原生提供的冲突
+  console.log(ctx.request.body)
+
+  ctx.body = {
+    code: 0,
+    message: 'success'
+  }
+})
+```
+
+
+
+#### 5.2.2、x-www-form-urlencoded
+
+和 json 格式一样，使用 koa-bodyparser 中间件，使用方式也完全一样
+
+```js
+const Koa = require('koa')
+const KoaRouter = require('koa-router')
+const koaBodyParse = require('koa-bodyparser')
+
+const app = new Koa()
+
+app.use(koaBodyParse())
+
+const userRouter = new KoaRouter({ prefix: '/api' })
+
+userRouter.post('/info', (ctx, next) => {
+  // 有 koa-bodyparse 中间件提供的功能
+  // 注意：这里不能简写 ctx.body，与 koa 原生提供的冲突
+  console.log(ctx.request.body)
+
+  ctx.body = {
+    code: 0,
+    message: 'success'
+  }
+})
+```
+
+
+
+#### 5.2.3、form-data
+
+要想解析 form-data 格式的 body 数据，需要借助第三方中间件 koa-multer
+
+安装：
+
+```js
+npm i koa-multer
+```
+
+使用：
+
+```js
+const Koa = require('koa')
+const KoaRouter = require('koa-router')
+const koaBodyParse = require('koa-bodyparser')
+const KoaMulter = require('koa-multer')
+const path = require('path')
+
+const app = new Koa()
+
+const userRouter = new KoaRouter({ prefix: '/api' })
+
+const storage = KoaMulter.diskStorage({
+  destination: './imgs/', // 存储的路径
+  // 保存的文件名
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname))
+  }
+})
+
+const upload = KoaMulter({
+  storage // 自定义配置
+})
+
+// upload.single 代表上传的是单张图片，图片是放在 键名为 file 上
+// 如果要上传多张，使用 upload.array('files')
+userRouter.post('/upload', upload.single('file'), (ctx, next) => {
+  // 拿到上传成功后信息，如果是多张，使用 ctx.req.files
+  console.log(ctx.req.file)
+  console.log(ctx.req.body) // 其他非图片
+
+  ctx.body = {
+    code: 0,
+    message: '上传成功'
+  }
+})
+```
+
+可以发现，使用方式基本与 Express 使用 multer 一致，但是需要注意的是：是从 ctx.req 中获取，而不是 ctx.request 中
+
+
+
+## 6、Koa 响应设置
+
+
+
+### 6.1、ctx.body
+
+可以通过 ctx.body 设置返回的数据，支持的格式如下：
+
+- string：字符串类型
+- buffer：buffer 类型
+- stream：stream 流数据
+- Object | Array：对象或者数组
+- null：不返回任何内容
+
+如果 response.status 尚未设置，Koa 会自动将状态设置为 200 或 204，有数据返回自动设置为 200，没有数据返回 null 自动设置为 204
+
+
+
+### 6.2、ctx.status
+
+设置响应状态码：
+
+```js
+ctx.status = 200
+```
+
+
+
+### 6.3、ctx.set
+
+设置响应头信息：
+
+```js
+ctx.set({
+  'Cache-Control': 'no-cache'
+})
+```
+
+
+
+## 7、Koa 开启静态资源服务器
+
+Koa 内部并没有提供静态资源相关的功能，所以开启静态资源服务器需要依赖于第三方中间件：koa-static
+
+安装：
+
+```js
+npm i koa-static
+```
+
+使用：
+
+```js
+const Koa = require('koa')
+const koaStatic = require('koa-static')
+
+const app = new Koa()
+
+// ./statics 为对应的静态资源目录
+app.use(koaStatic('./statics'))
+
+app.listen(9000, () => {
+  console.log('服务器已启动: 0.0.0.0:9000')
+})
+```
+
+
+
+## 8、Koa 源码阅读
+
+Express 源码阅读放在另外一个地方，具体查看：https://github.com/gweid/koa-source-code
