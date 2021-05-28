@@ -17,14 +17,17 @@ const app = new Koa()
 
 // ---------------------------- 多个中间件
 // 返回的结果是 hihihiih，这里与 express 略有不同
-
 // const middleWare = (ctx, next) => {
+//   console.log('开始中间件--1')
 //   ctx.response.body = 'hello, koa'
 //   next()
+//   console.log('结束中间件--1')
 // }
 
 // const middleWare1 = (ctx, next) => {
+//   console.log('开始中间件--2')
 //   ctx.response.body = 'hihihiih'
+//   console.log('结束中间件--2')
 // }
 
 // app.use(middleWare)
