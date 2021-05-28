@@ -4327,6 +4327,27 @@ app.listen(9000, () => {
 
 
 
+### 3.2、多个中间件问题
+
+```js
+const middleWare = (ctx, next) => {
+  ctx.response.body = 'hello, koa'
+  next()
+}
+
+const middleWare1 = (ctx, next) => {
+  ctx.response.body = 'hihihiih'
+}
+
+
+app.use(middleWare)
+app.use(middleWare1)
+```
+
+这里只会响应 'hihihiih'，这与 express 有所不同，express 在多个中间件处理同一个请求的时候，只能有一个 res.end，但是 koa 中可以有多个，但是值返回最后一个。这是因为在 Koa 中，会执行完所有中间件才去做结果响应，但是在 express 中，每执行一个中间件，如果中间价有 res.end，都会响应
+
+
+
 ## 4、Koa 的一些简写方式
 
 以下访问器和别名与 ctx.request.xxx 一致：

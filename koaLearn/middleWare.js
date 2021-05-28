@@ -15,6 +15,22 @@ const app = new Koa()
 
 // app.use(getInfoMiddle)
 
+// ---------------------------- 多个中间件
+// 返回的结果是 hihihiih，这里与 express 略有不同
+
+const middleWare = (ctx, next) => {
+  ctx.response.body = 'hello, koa'
+  next()
+}
+
+const middleWare1 = (ctx, next) => {
+  ctx.response.body = 'hihihiih'
+}
+
+
+app.use(middleWare)
+app.use(middleWare1)
+
 
 //------------------------------ 使用第三方中间件 koa-router
 // userRouter.routes() 会返回一个中间件函数
